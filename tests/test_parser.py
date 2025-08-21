@@ -1,6 +1,6 @@
 import pytest
 
-from src.parser import tokenize, Parser
+from src.parser import tokenize, Parser, parse
 from src.logic_ast import Variable, Not, And, Or, Implies, Biconditional
 
 class TestTokenize:
@@ -262,3 +262,74 @@ class TestParser:
         result = parser.parse_biconditional()
         assert isinstance(result, Variable)
         assert result.name == "p"
+
+
+class TestParse:
+    
+    def test_parse_simple_variable(self):
+        result = parse("p")
+        assert isinstance(result, Variable)
+        assert result.name == "p"
+    
+    def test_parse_negation(self):
+        result = parse("¬p")
+        assert isinstance(result, Not)
+        assert isinstance(result.operand, Variable)
+        assert result.operand.name == "p"
+    
+    def test_parse_complex_formula(self):
+        result = parse("(p ∧ q) → (¬r ∨ s)")
+        assert isinstance(result, Implies)
+        assert isinstance(result.left, And)
+        assert isinstance(result.right, Or)
+        assert isinstance(result.right.left, Not)
+    
+    def test_parse_precedence(self):
+        result = parse("p ∨ q ∧ r")
+        assert isinstance(result, Or)
+        assert isinstance(result.left, Variable)
+        assert result.left.name == "p"
+        assert isinstance(result.right, And)
+        assert isinstance(result.right.left, Variable)
+        assert result.right.left.name == "q"
+        assert isinstance(result.right.right, Variable)
+        assert result.right.right.name == "r"
+    
+    def test_parse_negation_with_parentheses(self):
+        result = parse("¬(p ∧ q)")
+        assert isinstance(result, Not)
+        assert isinstance(result.operand, And)
+        assert isinstance(result.operand.left, Variable)
+        assert result.operand.left.name == "p"
+        assert isinstance(result.operand.right, Variable)
+        assert result.operand.right.name == "q"
+    
+    def test_parse_complex_implication_chain(self):
+        result = parse("p → q → r ∧ s")
+        assert isinstance(result, Implies)
+        assert isinstance(result.left, Variable)
+        assert result.left.name == "p"
+        assert isinstance(result.right, Implies)
+        assert isinstance(result.right.left, Variable)
+        assert result.right.left.name == "q"
+        assert isinstance(result.right.right, And)
+        assert isinstance(result.right.right.left, Variable)
+        assert result.right.right.left.name == "r"
+        assert isinstance(result.right.right.right, Variable)
+        assert result.right.right.right.name == "s"
+    
+    def test_parse_nested_biconditional_with_negation(self):
+        result = parse("¬p ↔ (q ∨ r) → ¬s")
+        assert isinstance(result, Biconditional)
+        assert isinstance(result.left, Not)
+        assert isinstance(result.left.operand, Variable)
+        assert result.left.operand.name == "p"
+        assert isinstance(result.right, Implies)
+        assert isinstance(result.right.left, Or)
+        assert isinstance(result.right.left.left, Variable)
+        assert result.right.left.left.name == "q"
+        assert isinstance(result.right.left.right, Variable)
+        assert result.right.left.right.name == "r"
+        assert isinstance(result.right.right, Not)
+        assert isinstance(result.right.right.operand, Variable)
+        assert result.right.right.operand.name == "s"

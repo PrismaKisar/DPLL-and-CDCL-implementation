@@ -1,7 +1,7 @@
 import pytest
 
 from src.parser import tokenize, Parser
-from src.logic_ast import Variable, Not, And
+from src.logic_ast import Variable, Not, And, Or
 
 class TestTokenize:
     
@@ -140,5 +140,40 @@ class TestParser:
     def test_parse_and_without_and(self):
         parser = Parser(["p"])
         result = parser.parse_and()
+        assert isinstance(result, Variable)
+        assert result.name == "p"
+    
+    def test_parse_or_simple(self):
+        parser = Parser(["p", "∨", "q"])
+        result = parser.parse_or()
+        assert isinstance(result, Or)
+        assert isinstance(result.left, Variable)
+        assert result.left.name == "p"
+        assert isinstance(result.right, Variable)
+        assert result.right.name == "q"
+    
+    def test_parse_or_multiple(self):
+        parser = Parser(["p", "∨", "q", "∨", "r"])
+        result = parser.parse_or()
+        assert isinstance(result, Or)
+        assert isinstance(result.left, Or)
+        assert result.left.left.name == "p"
+        assert result.left.right.name == "q"
+        assert isinstance(result.right, Variable)
+        assert result.right.name == "r"
+    
+    def test_parse_or_with_and(self):
+        parser = Parser(["p", "∧", "q", "∨", "r"])
+        result = parser.parse_or()
+        assert isinstance(result, Or)
+        assert isinstance(result.left, And)
+        assert result.left.left.name == "p"
+        assert result.left.right.name == "q"
+        assert isinstance(result.right, Variable)
+        assert result.right.name == "r"
+    
+    def test_parse_or_without_or(self):
+        parser = Parser(["p"])
+        result = parser.parse_or()
         assert isinstance(result, Variable)
         assert result.name == "p"

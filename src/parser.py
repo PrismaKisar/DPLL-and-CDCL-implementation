@@ -21,10 +21,16 @@ class Parser:
         self.position = 0
     
     def peek(self) -> str | None:
-        pass
+        if self.position < len(self.tokens):
+            return self.tokens[self.position]
+        return None
     
     def consume(self) -> str:
-        pass
+        if self.position >= len(self.tokens):
+            raise ValueError("Unexpected end of formula")
+        token = self.tokens[self.position]
+        self.position += 1
+        return token
     
     def parse_biconditional(self) -> Formula:
         pass

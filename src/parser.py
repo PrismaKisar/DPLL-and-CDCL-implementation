@@ -1,4 +1,4 @@
-from src.logic_ast import Formula, Variable, Not
+from src.logic_ast import Formula, Variable, Not, And
 
 
 def tokenize(formula: str) -> list[str]:
@@ -42,7 +42,14 @@ class Parser:
         pass
     
     def parse_and(self) -> Formula:
-        pass
+        left = self.parse_not()
+        
+        while self.peek() == "∧":
+            self.consume()
+            right = self.parse_not()
+            left = And(left, right)
+        
+        return left
     
     def parse_not(self) -> Formula:
         if self.peek() == "¬":

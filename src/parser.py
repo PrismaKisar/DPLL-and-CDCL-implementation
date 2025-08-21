@@ -1,4 +1,4 @@
-from src.logic_ast import Formula, Variable, Not, And, Or, Implies
+from src.logic_ast import Formula, Variable, Not, And, Or, Implies, Biconditional
 
 
 def tokenize(formula: str) -> list[str]:
@@ -33,7 +33,14 @@ class Parser:
         return token
     
     def parse_biconditional(self) -> Formula:
-        pass
+        left = self.parse_implication()
+        
+        while self.peek() == "↔":
+            self.consume()
+            right = self.parse_implication()
+            left = Biconditional(left, right)
+        
+        return left
     
     def parse_implication(self) -> Formula:
         left = self.parse_or()
@@ -78,7 +85,7 @@ class Parser:
         
         if token == "(":
             self.consume()
-            formula = self.parse_primary()
+            formula = self.parse_biconditional()
             if self.peek() != ")":
                 raise ValueError("Expected closing parenthesis")
             self.consume()

@@ -1,7 +1,7 @@
 import pytest
 
 from src.parser import tokenize, Parser
-from src.logic_ast import Variable, Not, And, Or, Implies
+from src.logic_ast import Variable, Not, And, Or, Implies, Biconditional
 
 class TestTokenize:
     
@@ -221,5 +221,44 @@ class TestParser:
     def test_parse_implication_without_implies(self):
         parser = Parser(["p"])
         result = parser.parse_implication()
+        assert isinstance(result, Variable)
+        assert result.name == "p"
+    
+    def test_parse_biconditional_simple(self):
+        parser = Parser(["p", "↔", "q"])
+        result = parser.parse_biconditional()
+        assert isinstance(result, Biconditional)
+        assert isinstance(result.left, Variable)
+        assert result.left.name == "p"
+        assert isinstance(result.right, Variable)
+        assert result.right.name == "q"
+    
+    def test_parse_biconditional_multiple(self):
+        parser = Parser(["p", "↔", "q", "↔", "r"])
+        result = parser.parse_biconditional()
+        assert isinstance(result, Biconditional)
+        assert isinstance(result.left, Biconditional)
+        assert isinstance(result.left.left, Variable)
+        assert result.left.left.name == "p"
+        assert isinstance(result.left.right, Variable)
+        assert result.left.right.name == "q"
+        assert isinstance(result.right, Variable)
+        assert result.right.name == "r"
+    
+    def test_parse_biconditional_with_implication(self):
+        parser = Parser(["p", "→", "q", "↔", "r"])
+        result = parser.parse_biconditional()
+        assert isinstance(result, Biconditional)
+        assert isinstance(result.left, Implies)
+        assert isinstance(result.left.left, Variable)
+        assert result.left.left.name == "p"
+        assert isinstance(result.left.right, Variable)
+        assert result.left.right.name == "q"
+        assert isinstance(result.right, Variable)
+        assert result.right.name == "r"
+    
+    def test_parse_biconditional_without_biconditional(self):
+        parser = Parser(["p"])
+        result = parser.parse_biconditional()
         assert isinstance(result, Variable)
         assert result.name == "p"

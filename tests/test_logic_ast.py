@@ -1,5 +1,3 @@
-import pytest
-
 from src.logic_ast import Formula, Variable, Not, And, Or, Implies, Biconditional
 
 

@@ -45,4 +45,42 @@ def eliminate_implications(formula: Formula) -> Formula:
 
 
 def push_negations_inward(formula: Formula) -> Formula:
-    pass
+    if isinstance(formula, Variable):
+        return formula
+    
+    elif isinstance(formula, Not):
+        if isinstance(formula.operand, Variable):
+            return formula
+        
+        elif isinstance(formula.operand, Not):
+            return push_negations_inward(formula.operand.operand)
+        
+        elif isinstance(formula.operand, And):
+            return Or(
+                push_negations_inward(Not(formula.operand.left)),
+                push_negations_inward(Not(formula.operand.right))
+            )
+        
+        elif isinstance(formula.operand, Or):
+            return And(
+                push_negations_inward(Not(formula.operand.left)),
+                push_negations_inward(Not(formula.operand.right))
+            )
+        
+        else:
+            raise ValueError(f"Unexpected formula under negation: {type(formula.operand)}")
+    
+    elif isinstance(formula, And):
+        return And(
+            push_negations_inward(formula.left),
+            push_negations_inward(formula.right)
+        )
+    
+    elif isinstance(formula, Or):
+        return Or(
+            push_negations_inward(formula.left),
+            push_negations_inward(formula.right)
+        )
+    
+    else:
+        raise ValueError(f"Unknown formula type: {type(formula)}")

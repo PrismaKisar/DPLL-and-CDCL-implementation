@@ -8,7 +8,40 @@ def to_nnf(formula: Formula) -> Formula:
 
 
 def eliminate_implications(formula: Formula) -> Formula:
-    pass
+    if isinstance(formula, Variable):
+        return formula
+    
+    elif isinstance(formula, Not):
+        return Not(eliminate_implications(formula.operand))
+    
+    elif isinstance(formula, And):
+        return And(
+            eliminate_implications(formula.left),
+            eliminate_implications(formula.right)
+        )
+    
+    elif isinstance(formula, Or):
+        return Or(
+            eliminate_implications(formula.left),
+            eliminate_implications(formula.right)
+        )
+    
+    elif isinstance(formula, Implies):
+        return Or(
+            Not(eliminate_implications(formula.left)),
+            eliminate_implications(formula.right)
+        )
+    
+    elif isinstance(formula, Biconditional):
+        left = eliminate_implications(formula.left)
+        right = eliminate_implications(formula.right)
+        return And(
+            Or(Not(left), right),
+            Or(Not(right), left)
+        )
+    
+    else:
+        raise ValueError(f"Unknown formula type: {type(formula)}")
 
 
 def push_negations_inward(formula: Formula) -> Formula:

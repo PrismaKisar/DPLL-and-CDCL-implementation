@@ -123,7 +123,9 @@ class TestParser:
         result = parser.parse_and()
         assert isinstance(result, And)
         assert isinstance(result.left, And)
+        assert isinstance(result.left.left, Variable)
         assert result.left.left.name == "p"
+        assert isinstance(result.left.right, Variable)
         assert result.left.right.name == "q"
         assert isinstance(result.right, Variable)
         assert result.right.name == "r"
@@ -133,6 +135,7 @@ class TestParser:
         result = parser.parse_and()
         assert isinstance(result, And)
         assert isinstance(result.left, Not)
+        assert isinstance(result.left.operand, Variable)
         assert result.left.operand.name == "p"
         assert isinstance(result.right, Variable)
         assert result.right.name == "q"
@@ -157,7 +160,9 @@ class TestParser:
         result = parser.parse_or()
         assert isinstance(result, Or)
         assert isinstance(result.left, Or)
+        assert isinstance(result.left.left, Variable)
         assert result.left.left.name == "p"
+        assert isinstance(result.left.right, Variable)
         assert result.left.right.name == "q"
         assert isinstance(result.right, Variable)
         assert result.right.name == "r"
@@ -167,7 +172,9 @@ class TestParser:
         result = parser.parse_or()
         assert isinstance(result, Or)
         assert isinstance(result.left, And)
+        assert isinstance(result.left.left, Variable)
         assert result.left.left.name == "p"
+        assert isinstance(result.left.right, Variable)
         assert result.left.right.name == "q"
         assert isinstance(result.right, Variable)
         assert result.right.name == "r"
@@ -176,7 +183,8 @@ class TestParser:
         parser = Parser(["p"])
         result = parser.parse_or()
         assert isinstance(result, Variable)
-        assert result.name == "p"    
+        assert result.name == "p"
+    
     def test_parse_implication_simple(self):
         parser = Parser(["p", "→", "q"])
         result = parser.parse_implication()
@@ -193,7 +201,9 @@ class TestParser:
         assert isinstance(result.left, Variable)
         assert result.left.name == "p"
         assert isinstance(result.right, Implies)
+        assert isinstance(result.right.left, Variable)
         assert result.right.left.name == "q"
+        assert isinstance(result.right.right, Variable)
         assert result.right.right.name == "r"
     
     def test_parse_implication_with_or(self):
@@ -201,7 +211,9 @@ class TestParser:
         result = parser.parse_implication()
         assert isinstance(result, Implies)
         assert isinstance(result.left, Or)
+        assert isinstance(result.left.left, Variable)
         assert result.left.left.name == "p"
+        assert isinstance(result.left.right, Variable)
         assert result.left.right.name == "q"
         assert isinstance(result.right, Variable)
         assert result.right.name == "r"

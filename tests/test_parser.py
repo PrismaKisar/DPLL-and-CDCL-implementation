@@ -1,8 +1,9 @@
 import pytest
 
-from src.parser import tokenize
+from src.parser import tokenize, Parser
+from src.logic_ast import Variable
 
-class TestParser:
+class TestTokenize:
     
     def test_single_variable(self):
         assert tokenize("p") == ["p"]
@@ -32,3 +33,57 @@ class TestParser:
         
         with pytest.raises(ValueError, match="Invalid character"):
             tokenize("p1")
+
+
+class TestParser:
+    
+    def test_parser_init(self):
+        tokens = ["p", "∧", "q"]
+        parser = Parser(tokens)
+        assert parser.tokens == tokens
+        assert parser.position == 0
+    
+    def test_peek(self):
+        parser = Parser(["p", "∧", "q"])
+        assert parser.peek() == "p"
+        assert parser.position == 0
+    
+    def test_peek_at_end(self):
+        parser = Parser(["p"])
+        parser.position = 1
+        assert parser.peek() is None
+    
+    def test_consume(self):
+        parser = Parser(["p", "∧", "q"])
+        assert parser.consume() == "p"
+        assert parser.position == 1
+        assert parser.consume() == "∧"
+        assert parser.position == 2
+    
+    def test_consume_at_end(self):
+        parser = Parser(["p"])
+        parser.consume()
+        with pytest.raises(ValueError, match="Unexpected end of formula"):
+            parser.consume()
+    
+    def test_parse_primary_variable(self):
+        parser = Parser(["p"])
+        result = parser.parse_primary()
+        assert isinstance(result, Variable)
+        assert result.name == "p"
+    
+    def test_parse_primary_parentheses(self):
+        parser = Parser(["(", "p", ")"])
+        result = parser.parse_primary()
+        assert isinstance(result, Variable)
+        assert result.name == "p"
+    
+    def test_parse_primary_missing_closing_paren(self):
+        parser = Parser(["(", "p"])
+        with pytest.raises(ValueError, match="Expected closing parenthesis"):
+            parser.parse_primary()
+    
+    def test_parse_primary_unexpected_token(self):
+        parser = Parser(["∧"])
+        with pytest.raises(ValueError, match="Unexpected token"):
+            parser.parse_primary()

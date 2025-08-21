@@ -1,4 +1,4 @@
-from src.logic_ast import Formula
+from src.logic_ast import Formula, Variable
 
 
 def tokenize(formula: str) -> list[str]:
@@ -48,7 +48,22 @@ class Parser:
         pass
     
     def parse_primary(self) -> Formula:
-        pass
+        token = self.peek()
+        
+        if token == "(":
+            self.consume()
+            formula = self.parse_primary()  # Per ora usa parse_primary invece di biconditional
+            if self.peek() != ")":
+                raise ValueError("Expected closing parenthesis")
+            self.consume()
+            return formula
+        
+        elif token and token.isalpha():
+            self.consume()
+            return Variable(token)
+        
+        else:
+            raise ValueError(f"Unexpected token: {token}")
 
 
 def parse(formula: str) -> Formula:

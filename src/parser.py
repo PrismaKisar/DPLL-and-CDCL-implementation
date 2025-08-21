@@ -1,4 +1,4 @@
-from src.logic_ast import Formula, Variable, Not, And, Or
+from src.logic_ast import Formula, Variable, Not, And, Or, Implies
 
 
 def tokenize(formula: str) -> list[str]:
@@ -36,7 +36,14 @@ class Parser:
         pass
     
     def parse_implication(self) -> Formula:
-        pass
+        left = self.parse_or()
+        
+        if self.peek() == "→":
+            self.consume()
+            right = self.parse_implication()
+            return Implies(left, right)
+        
+        return left
     
     def parse_or(self) -> Formula:
         left = self.parse_and()

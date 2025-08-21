@@ -1,7 +1,7 @@
 import pytest
 
 from src.parser import tokenize, Parser
-from src.logic_ast import Variable, Not, And, Or
+from src.logic_ast import Variable, Not, And, Or, Implies
 
 class TestTokenize:
     
@@ -175,5 +175,39 @@ class TestParser:
     def test_parse_or_without_or(self):
         parser = Parser(["p"])
         result = parser.parse_or()
+        assert isinstance(result, Variable)
+        assert result.name == "p"    
+    def test_parse_implication_simple(self):
+        parser = Parser(["p", "→", "q"])
+        result = parser.parse_implication()
+        assert isinstance(result, Implies)
+        assert isinstance(result.left, Variable)
+        assert result.left.name == "p"
+        assert isinstance(result.right, Variable)
+        assert result.right.name == "q"
+    
+    def test_parse_implication_right_associative(self):
+        parser = Parser(["p", "→", "q", "→", "r"])
+        result = parser.parse_implication()
+        assert isinstance(result, Implies)
+        assert isinstance(result.left, Variable)
+        assert result.left.name == "p"
+        assert isinstance(result.right, Implies)
+        assert result.right.left.name == "q"
+        assert result.right.right.name == "r"
+    
+    def test_parse_implication_with_or(self):
+        parser = Parser(["p", "∨", "q", "→", "r"])
+        result = parser.parse_implication()
+        assert isinstance(result, Implies)
+        assert isinstance(result.left, Or)
+        assert result.left.left.name == "p"
+        assert result.left.right.name == "q"
+        assert isinstance(result.right, Variable)
+        assert result.right.name == "r"
+    
+    def test_parse_implication_without_implies(self):
+        parser = Parser(["p"])
+        result = parser.parse_implication()
         assert isinstance(result, Variable)
         assert result.name == "p"

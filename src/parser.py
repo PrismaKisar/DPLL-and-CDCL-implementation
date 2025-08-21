@@ -43,3 +43,9 @@ class Parser:
     
     def parse_primary(self) -> Formula:
         pass
+
+
+def parse(formula: str) -> Formula:
+    tokens = tokenize(formula)
+    parser = Parser(tokens)
+    return parser.parse_biconditional()

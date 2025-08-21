@@ -1,7 +1,7 @@
 import pytest
 
 from src.parser import tokenize, Parser
-from src.logic_ast import Variable
+from src.logic_ast import Variable, Not
 
 class TestTokenize:
     
@@ -87,3 +87,24 @@ class TestParser:
         parser = Parser(["∧"])
         with pytest.raises(ValueError, match="Unexpected token"):
             parser.parse_primary()
+    
+    def test_parse_not_variable(self):
+        parser = Parser(["¬", "p"])
+        result = parser.parse_not()
+        assert isinstance(result, Not)
+        assert isinstance(result.operand, Variable)
+        assert result.operand.name == "p"
+    
+    def test_parse_not_double_negation(self):
+        parser = Parser(["¬", "¬", "p"])
+        result = parser.parse_not()
+        assert isinstance(result, Not)
+        assert isinstance(result.operand, Not)
+        assert isinstance(result.operand.operand, Variable)
+        assert result.operand.operand.name == "p"
+    
+    def test_parse_not_without_negation(self):
+        parser = Parser(["p"])
+        result = parser.parse_not()
+        assert isinstance(result, Variable)
+        assert result.name == "p"

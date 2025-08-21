@@ -1,4 +1,4 @@
-from src.logic_ast import Formula, Variable
+from src.logic_ast import Formula, Variable, Not
 
 
 def tokenize(formula: str) -> list[str]:
@@ -45,14 +45,19 @@ class Parser:
         pass
     
     def parse_not(self) -> Formula:
-        pass
+        if self.peek() == "¬":
+            self.consume()
+            operand = self.parse_not()
+            return Not(operand)
+        
+        return self.parse_primary()
     
     def parse_primary(self) -> Formula:
         token = self.peek()
         
         if token == "(":
             self.consume()
-            formula = self.parse_primary()  # Per ora usa parse_primary invece di biconditional
+            formula = self.parse_primary()
             if self.peek() != ")":
                 raise ValueError("Expected closing parenthesis")
             self.consume()

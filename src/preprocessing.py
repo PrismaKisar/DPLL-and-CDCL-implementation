@@ -84,3 +84,13 @@ def push_negations_inward(formula: Formula) -> Formula:
     
     else:
         raise ValueError(f"Unknown formula type: {type(formula)}")
+
+
+def to_cnf(formula: Formula) -> Formula:
+    nnf_formula = to_nnf(formula)
+    cnf_formula = distribute_or_over_and(nnf_formula)
+    return cnf_formula
+
+
+def distribute_or_over_and(formula: Formula) -> Formula:
+    pass

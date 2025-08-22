@@ -1,6 +1,6 @@
 import pytest
 
-from src.preprocessing import eliminate_implications, push_negations_inward, to_nnf
+from src.preprocessing import eliminate_implications, push_negations_inward, to_nnf, to_cnf, distribute_or_over_and
 from src.logic_ast import Variable, Not, And, Or, Implies, Biconditional
 
 
@@ -176,3 +176,44 @@ class TestToNNF:
         assert isinstance(result.right, Not)
         assert isinstance(result.right.operand, Variable)
         assert result.right.operand.name == "r"
+
+
+class TestDistributeOrOverAnd:
+    
+    def test_variable_unchanged(self):
+        p = Variable("p")
+        result = distribute_or_over_and(p)
+        assert isinstance(result, Variable)
+        assert result.name == "p"
+    
+    def test_simple_or(self):
+        p = Variable("p")
+        q = Variable("q")
+        or_formula = Or(p, q)
+        result = distribute_or_over_and(or_formula)
+        assert isinstance(result, Or)
+        assert isinstance(result.left, Variable)
+        assert result.left.name == "p"
+        assert isinstance(result.right, Variable)
+        assert result.right.name == "q"
+
+
+class TestToCNF:
+    
+    def test_simple_variable(self):
+        p = Variable("p")
+        result = to_cnf(p)
+        assert isinstance(result, Variable)
+        assert result.name == "p"
+    
+    def test_simple_implication_to_cnf(self):
+        p = Variable("p")
+        q = Variable("q")
+        impl = Implies(p, q)
+        result = to_cnf(impl)
+        assert isinstance(result, Or)
+        assert isinstance(result.left, Not)
+        assert isinstance(result.left.operand, Variable)
+        assert result.left.operand.name == "p"
+        assert isinstance(result.right, Variable)
+        assert result.right.name == "q"

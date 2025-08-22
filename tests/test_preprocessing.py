@@ -196,6 +196,42 @@ class TestDistributeOrOverAnd:
         assert result.left.name == "p"
         assert isinstance(result.right, Variable)
         assert result.right.name == "q"
+    
+    def test_distribute_or_over_and_right(self):
+        p = Variable("p")
+        q = Variable("q")
+        r = Variable("r")
+        formula = Or(p, And(q, r))
+        result = distribute_or_over_and(formula)
+        assert isinstance(result, And)
+        assert isinstance(result.left, Or)
+        assert isinstance(result.right, Or)
+        assert isinstance(result.left.left, Variable)
+        assert result.left.left.name == "p"
+        assert isinstance(result.left.right, Variable)
+        assert result.left.right.name == "q"
+        assert isinstance(result.right.left, Variable)
+        assert result.right.left.name == "p"
+        assert isinstance(result.right.right, Variable)
+        assert result.right.right.name == "r"
+    
+    def test_distribute_or_over_and_left(self):
+        p = Variable("p")
+        q = Variable("q")
+        r = Variable("r")
+        formula = Or(And(p, q), r)
+        result = distribute_or_over_and(formula)
+        assert isinstance(result, And)
+        assert isinstance(result.left, Or)
+        assert isinstance(result.right, Or)
+    
+    def test_unknown_formula_type_error(self):
+        class UnknownFormula:
+            pass
+        
+        unknown = UnknownFormula()
+        with pytest.raises(ValueError, match="Unknown formula type"):
+            distribute_or_over_and(unknown)  # type: ignore
 
 
 class TestToCNF:
@@ -217,3 +253,13 @@ class TestToCNF:
         assert result.left.operand.name == "p"
         assert isinstance(result.right, Variable)
         assert result.right.name == "q"
+    
+    def test_complex_formula_to_cnf(self):
+        p = Variable("p")
+        q = Variable("q")
+        r = Variable("r")
+        formula = Or(p, And(q, r))
+        result = to_cnf(formula)
+        assert isinstance(result, And)
+        assert isinstance(result.left, Or)
+        assert isinstance(result.right, Or)

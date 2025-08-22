@@ -93,4 +93,36 @@ def to_cnf(formula: Formula) -> Formula:
 
 
 def distribute_or_over_and(formula: Formula) -> Formula:
-    pass
+    if isinstance(formula, Variable):
+        return formula
+    
+    elif isinstance(formula, Not):
+        return Not(distribute_or_over_and(formula.operand))
+    
+    elif isinstance(formula, And):
+        return And(
+            distribute_or_over_and(formula.left),
+            distribute_or_over_and(formula.right)
+        )
+    
+    elif isinstance(formula, Or):
+        left = distribute_or_over_and(formula.left)
+        right = distribute_or_over_and(formula.right)
+        
+        if isinstance(right, And):
+            return And(
+                distribute_or_over_and(Or(left, right.left)),
+                distribute_or_over_and(Or(left, right.right))
+            )
+        
+        elif isinstance(left, And):
+            return And(
+                distribute_or_over_and(Or(left.left, right)),
+                distribute_or_over_and(Or(left.right, right))
+            )
+        
+        else:
+            return Or(left, right)
+    
+    else:
+        raise ValueError(f"Unknown formula type: {type(formula)}")

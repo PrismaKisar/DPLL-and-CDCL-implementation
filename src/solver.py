@@ -42,3 +42,20 @@ class DPLLSolver:
             return False
         else:
             return None
+    
+    def _unit_propagation(self) -> Optional[DecisionResult]:
+        changed = True
+        while changed:
+            changed = False
+            for clause in self.cnf.clauses:
+                result = self._evaluate_clause(clause)
+                if result is False:
+                    return DecisionResult.UNSAT
+                elif result is None:
+                    unassigned_literals = [lit for lit in clause.literals 
+                                         if lit.variable not in self.assignment]
+                    if len(unassigned_literals) == 1:
+                        lit = unassigned_literals[0]
+                        self.assignment[lit.variable] = not lit.negated
+                        changed = True
+        return None

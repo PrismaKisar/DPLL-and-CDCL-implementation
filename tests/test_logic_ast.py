@@ -1,4 +1,4 @@
-from src.logic_ast import Formula, Variable, Not, And, Or, Implies, Biconditional
+from src.logic_ast import Formula, Variable, Not, And, Or, Implies, Biconditional, Literal, Clause, CNFFormula
 
 
 class TestVariable:
@@ -111,3 +111,70 @@ class TestComplexFormulas:
         complex_formula = Implies(left_part, right_part)
         
         assert str(complex_formula) == "(p ∧ q) → (¬r ∨ s)"
+
+
+class TestLiteral:
+    
+    def test_positive_literal(self):
+        lit = Literal("p", negated=False)
+        assert lit.variable == "p"
+        assert lit.negated == False
+        assert str(lit) == "p"
+    
+    def test_negative_literal(self):
+        lit = Literal("p", negated=True)
+        assert lit.variable == "p"
+        assert lit.negated == True
+        assert str(lit) == "¬p"
+    
+    def test_literal_default_positive(self):
+        lit = Literal("q")
+        assert lit.variable == "q"
+        assert lit.negated == False
+        assert str(lit) == "q"
+
+
+class TestClause:
+    
+    def test_empty_clause(self):
+        clause = Clause([])
+        assert clause.literals == []
+        assert str(clause) == "⊥"
+    
+    def test_single_literal_clause(self):
+        lit = Literal("p")
+        clause = Clause([lit])
+        assert len(clause.literals) == 1
+        assert str(clause) == "p"
+    
+    def test_multiple_literals_clause(self):
+        lit1 = Literal("p")
+        lit2 = Literal("q", negated=True)
+        lit3 = Literal("r")
+        clause = Clause([lit1, lit2, lit3])
+        assert len(clause.literals) == 3
+        assert str(clause) == "p ∨ ¬q ∨ r"
+
+
+class TestCNFFormula:
+    
+    def test_empty_cnf(self):
+        cnf = CNFFormula([])
+        assert cnf.clauses == []
+        assert str(cnf) == "⊤"
+    
+    def test_single_clause_cnf(self):
+        lit = Literal("p")
+        clause = Clause([lit])
+        cnf = CNFFormula([clause])
+        assert len(cnf.clauses) == 1
+        assert str(cnf) == "p"
+    
+    def test_multiple_clauses_cnf(self):
+        lit1 = Literal("p")
+        lit2 = Literal("q", negated=True)
+        clause1 = Clause([lit1])
+        clause2 = Clause([lit2])
+        cnf = CNFFormula([clause1, clause2])
+        assert len(cnf.clauses) == 2
+        assert str(cnf) == "(p) ∧ (¬q)"

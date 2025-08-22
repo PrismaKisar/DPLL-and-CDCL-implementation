@@ -1,4 +1,4 @@
-from src.logic_ast import Formula, Variable, Not, And, Or, Implies, Biconditional
+from src.logic_ast import Formula, Variable, Not, And, Or, Implies, Biconditional, Literal, Clause, CNFFormula
 
 
 def to_nnf(formula: Formula) -> Formula:
@@ -86,10 +86,50 @@ def push_negations_inward(formula: Formula) -> Formula:
         raise ValueError(f"Unknown formula type: {type(formula)}")
 
 
-def to_cnf(formula: Formula) -> Formula:
+def formula_to_cnf_format(formula: Formula) -> CNFFormula:
+    if isinstance(formula, Variable) or (isinstance(formula, Not) and isinstance(formula.operand, Variable)):
+        literal = formula_to_literal(formula)
+        clause = Clause([literal])
+        return CNFFormula([clause])
+    
+    elif isinstance(formula, Or):
+        literals = extract_literals_from_or(formula)
+        clause = Clause(literals)
+        return CNFFormula([clause])
+    
+    elif isinstance(formula, And):
+        left_cnf = formula_to_cnf_format(formula.left)
+        right_cnf = formula_to_cnf_format(formula.right)
+        return CNFFormula(left_cnf.clauses + right_cnf.clauses)
+    
+    else:
+        raise ValueError(f"Expected CNF formula, got {type(formula)}")
+
+
+def extract_literals_from_or(formula: Formula) -> list[Literal]:
+    if isinstance(formula, Variable) or (isinstance(formula, Not) and isinstance(formula.operand, Variable)):
+        return [formula_to_literal(formula)]
+    elif isinstance(formula, Or):
+        left_literals = extract_literals_from_or(formula.left)
+        right_literals = extract_literals_from_or(formula.right)
+        return left_literals + right_literals
+    else:
+        raise ValueError(f"Expected OR of literals, got {type(formula)}")
+
+
+def formula_to_literal(formula: Formula) -> Literal:
+    if isinstance(formula, Variable):
+        return Literal(formula.name, negated=False)
+    elif isinstance(formula, Not) and isinstance(formula.operand, Variable):
+        return Literal(formula.operand.name, negated=True)
+    else:
+        raise ValueError(f"Cannot convert {type(formula)} to Literal")
+
+
+def to_cnf(formula: Formula) -> CNFFormula:
     nnf_formula = to_nnf(formula)
     cnf_formula = distribute_or_over_and(nnf_formula)
-    return cnf_formula
+    return formula_to_cnf_format(cnf_formula)
 
 
 def distribute_or_over_and(formula: Formula) -> Formula:

@@ -1,7 +1,7 @@
 import pytest
 
-from src.preprocessing import eliminate_implications, push_negations_inward, to_nnf, to_cnf, distribute_or_over_and
-from src.logic_ast import Variable, Not, And, Or, Implies, Biconditional
+from src.preprocessing import eliminate_implications, push_negations_inward, to_nnf, to_cnf, distribute_or_over_and, formula_to_cnf_format, extract_literals_from_or, formula_to_literal
+from src.logic_ast import Variable, Not, And, Or, Implies, Biconditional, CNFFormula
 
 
 class TestEliminateImplications:
@@ -239,20 +239,23 @@ class TestToCNF:
     def test_simple_variable(self):
         p = Variable("p")
         result = to_cnf(p)
-        assert isinstance(result, Variable)
-        assert result.name == "p"
+        assert isinstance(result, CNFFormula)
+        assert len(result.clauses) == 1
+        assert len(result.clauses[0].literals) == 1
+        assert result.clauses[0].literals[0].variable == "p"
+        assert result.clauses[0].literals[0].negated == False
     
     def test_simple_implication_to_cnf(self):
         p = Variable("p")
         q = Variable("q")
         impl = Implies(p, q)
         result = to_cnf(impl)
-        assert isinstance(result, Or)
-        assert isinstance(result.left, Not)
-        assert isinstance(result.left.operand, Variable)
-        assert result.left.operand.name == "p"
-        assert isinstance(result.right, Variable)
-        assert result.right.name == "q"
+        assert isinstance(result, CNFFormula)
+        assert len(result.clauses) == 1
+        assert len(result.clauses[0].literals) == 2
+        literals = result.clauses[0].literals
+        assert literals[0].variable == "p" and literals[0].negated == True
+        assert literals[1].variable == "q" and literals[1].negated == False
     
     def test_complex_formula_to_cnf(self):
         p = Variable("p")
@@ -260,6 +263,31 @@ class TestToCNF:
         r = Variable("r")
         formula = Or(p, And(q, r))
         result = to_cnf(formula)
-        assert isinstance(result, And)
-        assert isinstance(result.left, Or)
-        assert isinstance(result.right, Or)
+        assert isinstance(result, CNFFormula)
+        assert len(result.clauses) == 2
+        assert len(result.clauses[0].literals) == 2
+        assert len(result.clauses[1].literals) == 2
+
+
+class TestFormulaToCnfFormat:
+    
+    def test_invalid_formula_type_error(self):
+        impl = Implies(Variable("p"), Variable("q"))
+        with pytest.raises(ValueError, match="Expected CNF formula, got"):
+            formula_to_cnf_format(impl)
+
+
+class TestExtractLiteralsFromOr:
+    
+    def test_invalid_formula_type_error(self):
+        and_formula = And(Variable("p"), Variable("q"))
+        with pytest.raises(ValueError, match="Expected OR of literals, got"):
+            extract_literals_from_or(and_formula)
+
+
+class TestFormulaToLiteral:
+    
+    def test_invalid_formula_type_error(self):
+        and_formula = And(Variable("p"), Variable("q"))
+        with pytest.raises(ValueError, match="Cannot convert"):
+            formula_to_literal(and_formula)

@@ -14,13 +14,11 @@ def solve_file(file_path: str) -> Tuple[DecisionResult, float, DecisionResult, f
     variables = {literal.variable for clause in cnf_formula.clauses 
                  for literal in clause.literals}
     
-    # Risolvi con CDCL
     cdcl_solver = CDCLSolver(cnf_formula)
     start_time = time.time()
     cdcl_result = cdcl_solver.solve()
     cdcl_time = time.time() - start_time
     
-    # Risolvi con DPLL
     dpll_solver = DPLLSolver(cnf_formula)
     start_time = time.time()
     dpll_result = dpll_solver.solve()
@@ -35,7 +33,7 @@ def generate_test_files(type: str, start: int, end: int) -> List[str]:
 
 
 def print_header() -> None:
-    print(f"{'File':<15} {'CDCL':<10} {'Tempo':<8} {'DPLL':<10} {'Tempo':<8}")
+    print(f"{'File':<15} {'CDCL':<10} {'Time':<8} {'DPLL':<10} {'Time':<8}")
     print("-" * 51)
 
 def print_result_line(filename: str, cdcl_result: DecisionResult, cdcl_time: float,
@@ -69,7 +67,7 @@ def solve_benchmark(test_files: List[str]) -> List[ResultData]:
             print_error_line(filename)
     
     print("-" * 51)
-    print(f"{'TOTALE':<15} {'':<10} {total_cdcl_time:<8.4f} {'':<10} {total_dpll_time:<8.4f}")
+    print(f"{'TOTAL':<15} {'':<10} {total_cdcl_time:<8.4f} {'':<10} {total_dpll_time:<8.4f}")
     return results
 
 if __name__ == "__main__":
@@ -85,10 +83,9 @@ if __name__ == "__main__":
     print_header()
     unsat_results = solve_benchmark(test_files)
     
-    # Calcola e mostra i totali complessivi
     total_cdcl = sum(r[2] for r in sat_results + unsat_results)
     total_dpll = sum(r[4] for r in sat_results + unsat_results)
-    print("\n=== TOTALI COMPLESSIVI ===")
+    print("\n=== OVERALL TOTALS ===")
     print(f"CDCL: {total_cdcl:.4f}s")
     print(f"DPLL: {total_dpll:.4f}s")
-    print(f"Differenza: {total_dpll - total_cdcl:.4f}s ({((total_dpll/total_cdcl-1)*100):.1f}% più lento)" if total_cdcl > 0 else "")
+    print(f"Difference: {total_dpll - total_cdcl:.4f}s ({((total_dpll/total_cdcl-1)*100):.1f}% slower)" if total_cdcl > 0 else "")

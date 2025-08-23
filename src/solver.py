@@ -121,3 +121,20 @@ class DPLLSolver:
         
         self.cnf.clauses = simplified_clauses
         return True
+    
+    def _pure_literal_elimination(self) -> Optional[DecisionResult]:
+        literal_polarities: Dict[str, Set[bool]] = {}
+        
+        for clause in self.cnf.clauses:
+            if self._evaluate_clause(clause) is not True:
+                for lit in clause.literals:
+                    if lit.variable not in self.assignment:
+                        if lit.variable not in literal_polarities:
+                            literal_polarities[lit.variable] = set()
+                        literal_polarities[lit.variable].add(not lit.negated)
+        
+        for var, polarities in literal_polarities.items():
+            if len(polarities) == 1:
+                self.assignment[var] = list(polarities)[0]
+        
+        return None

@@ -1,5 +1,3 @@
-import pytest
-
 from src.solver import DPLLSolver, DecisionResult, Assignment
 from src.logic_ast import CNFFormula, Clause, Literal
 
@@ -194,7 +192,6 @@ class TestDPLLSolver:
         assert result is False
     
     def test_unit_resolution_false_literal_removal(self):
-        # Test: p=False, clausola (p ∨ q ∨ r) -> diventa (q ∨ r)
         literal_p = Literal("p", negated=False)
         literal_q = Literal("q", negated=False)  
         literal_r = Literal("r", negated=False)
@@ -214,7 +211,6 @@ class TestDPLLSolver:
         assert "p" not in literals
     
     def test_unit_resolution_negated_literal_removal(self):
-        # Test: p=True, clausola (¬p ∨ q ∨ r) -> diventa (q ∨ r)
         literal_p_neg = Literal("p", negated=True)
         literal_q = Literal("q", negated=False)
         literal_r = Literal("r", negated=False)
@@ -237,7 +233,6 @@ class TestDPLLSolver:
         cnf = CNFFormula([])
         solver = DPLLSolver(cnf)
         
-        # Testa backtrack con stack vuoto (riga 81)
         solver._backtrack()
         
         assert len(solver.decision_stack) == 0
@@ -247,21 +242,71 @@ class TestDPLLSolver:
         cnf = CNFFormula([])
         solver = DPLLSolver(cnf)
         
-        # Simula decisioni a livelli diversi + multiple allo stesso livello  
         solver.decision_stack.append(Assignment("p", True, 0))
         solver.decision_stack.append(Assignment("q", True, 1))
-        solver.decision_stack.append(Assignment("r", True, 1))  # True per attivare il caso opposto
+        solver.decision_stack.append(Assignment("r", True, 1))
         solver.assignment["p"] = True
         solver.assignment["q"] = True
         solver.assignment["r"] = True
         
-        # Verifica stato iniziale
         assert len(solver.assignment) == 3
         
-        # Backtrack dovrebbe rimuovere r e q (stesso livello), poi aggiungere r=False (righe 88-89)
         solver._backtrack()
         
-        # Verifica che il while loop ha rimosso q (stesso livello di r)
-        assert "q" not in solver.assignment  # Rimosso dal while loop (righe 88-89)
-        assert solver.assignment["p"] is True  # p rimane (livello diverso)
-        assert solver.assignment["r"] is False  # Nuovo valore opposto
+        assert "q" not in solver.assignment
+        assert solver.assignment["p"] is True
+        assert solver.assignment["r"] is False
+    
+    def test_pure_literal_elimination_positive(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=False)
+        literal_r = Literal("r", negated=True)
+        clause1 = Clause([literal_p, literal_q])
+        clause2 = Clause([literal_p, literal_r])
+        cnf = CNFFormula([clause1, clause2])
+        solver = DPLLSolver(cnf)
+        
+        result = solver._pure_literal_elimination()
+        assert result is None
+        assert solver.assignment["p"] is True
+    
+    def test_pure_literal_elimination_negative(self):
+        literal_p = Literal("p", negated=False)
+        literal_q_neg1 = Literal("q", negated=True)
+        literal_q_neg2 = Literal("q", negated=True)
+        literal_r = Literal("r", negated=False)
+        clause1 = Clause([literal_p, literal_q_neg1])
+        clause2 = Clause([literal_q_neg2, literal_r])
+        cnf = CNFFormula([clause1, clause2])
+        solver = DPLLSolver(cnf)
+        
+        result = solver._pure_literal_elimination()
+        assert result is None
+        assert solver.assignment["q"] is False
+    
+    def test_pure_literal_elimination_mixed_polarity(self):
+        literal_p_pos = Literal("p", negated=False)
+        literal_p_neg = Literal("p", negated=True)
+        literal_q = Literal("q", negated=False)
+        clause1 = Clause([literal_p_pos, literal_q])
+        clause2 = Clause([literal_p_neg, literal_q])
+        cnf = CNFFormula([clause1, clause2])
+        solver = DPLLSolver(cnf)
+        
+        result = solver._pure_literal_elimination()
+        assert result is None
+        assert "p" not in solver.assignment
+        assert solver.assignment["q"] is True
+    
+    def test_pure_literal_elimination_already_satisfied(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=False)
+        clause1 = Clause([literal_p])
+        clause2 = Clause([literal_q])
+        cnf = CNFFormula([clause1, clause2])
+        solver = DPLLSolver(cnf)
+        
+        solver.assignment["p"] = True
+        result = solver._pure_literal_elimination()
+        assert result is None
+        assert solver.assignment["q"] is True

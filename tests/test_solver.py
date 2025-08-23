@@ -1,3 +1,6 @@
+# pyright: reportPrivateUsage=false
+# pylint: disable=protected-access
+
 from src.solver import DPLLSolver, DecisionResult, Assignment, CDCLSolver, ImplicationNode
 from src.logic_ast import CNFFormula, Clause, Literal
 
@@ -863,7 +866,6 @@ class TestCDCLSolver:
     def test_backtrack_to_level_mixed_assignments_same_level(self):
         literal_p = Literal("p", negated=False)
         literal_q = Literal("q", negated=False)
-        literal_r = Literal("r", negated=False)
         reason1 = Clause([literal_p])
         reason2 = Clause([literal_q])
         

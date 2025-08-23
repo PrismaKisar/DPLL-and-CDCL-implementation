@@ -227,9 +227,11 @@ class CDCLSolver:
         elif unassigned_count == 0:
             return False
         else:
-        return None
+            return None
     
     def _analyze_conflict(self, conflict_clause: Clause) -> Clause:
+        # For now, just return the conflict clause as learned clause
+        # A full implementation would compute a 1-UIP clause
         return conflict_clause
     
     def _backjump(self, learned_clause: Clause) -> int:
@@ -300,4 +302,25 @@ class CDCLSolver:
         return True
     
     def solve(self) -> DecisionResult:
-        return DecisionResult.SAT
+        while True:
+            conflict_clause = self._unit_propagation()
+            
+            if conflict_clause is not None:
+                learned_clause = self._analyze_conflict(conflict_clause)
+                self.learned_clauses.append(learned_clause)
+                
+                if self.decision_level == 0:
+                    return DecisionResult.UNSAT
+                
+                backjump_level = self._backjump(learned_clause)
+                self._backtrack_to_level(backjump_level)
+                continue
+            
+            if self._all_clauses_satisfied():
+                return DecisionResult.SAT
+            
+            variable = self._choose_variable()
+            if variable is None:
+                return DecisionResult.SAT
+            
+            self._make_decision(variable, True)

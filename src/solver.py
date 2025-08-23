@@ -38,13 +38,38 @@ class DPLLSolver:
     
     def _dpll(self, assignment: Dict[str, bool]) -> DecisionResult:
         assignment = assignment.copy()
+        
+        if not self._unit_propagation(assignment):
+            return DecisionResult.UNSAT
+        
+        self._pure_literal_elimination(assignment)
+        
+        if self._all_clauses_satisfied(assignment):
+            self.assignment = assignment
+            return DecisionResult.SAT
+        
+        variable = self._choose_variable(assignment)
+        if variable is None:
+            self.assignment = assignment
+            return DecisionResult.SAT
+        
+        assignment_true = assignment.copy()
+        assignment_true[variable] = True
+        if self._dpll(assignment_true) == DecisionResult.SAT:
+            return DecisionResult.SAT
+        
+        assignment_false = assignment.copy()
+        assignment_false[variable] = False
+        return self._dpll(assignment_false)
+    
+    def _unit_propagation(self, assignment: Dict[str, bool]) -> bool:
         changed = True
         while changed:
             changed = False
             for clause in self.cnf.clauses:
                 state = self._evaluate_clause(clause, assignment)
                 if state is False:
-                    return DecisionResult.UNSAT
+                    return False
                 
                 if state is None:
                     unassigned = [lit for lit in clause.literals if lit.variable not in assignment]
@@ -53,7 +78,9 @@ class DPLLSolver:
                         value = not lit.negated
                         assignment[lit.variable] = value
                         changed = True
-        
+        return True
+    
+    def _pure_literal_elimination(self, assignment: Dict[str, bool]) -> None:
         literal_polarities: Dict[str, Set[bool]] = {}
         for clause in self.cnf.clauses:
             if self._evaluate_clause(clause, assignment) is not True:
@@ -66,34 +93,12 @@ class DPLLSolver:
         for var, polarities in literal_polarities.items():
             if len(polarities) == 1:
                 assignment[var] = list(polarities)[0]
-        
-        all_satisfied = True
+    
+    def _all_clauses_satisfied(self, assignment: Dict[str, bool]) -> bool:
         for clause in self.cnf.clauses:
             if self._evaluate_clause(clause, assignment) is not True:
-                all_satisfied = False
-                break
-        
-        if all_satisfied:
-            self.assignment = assignment
-            return DecisionResult.SAT
-        
-        variable = self._choose_variable(assignment)
-        if variable is None:
-            self.assignment = assignment
-            return DecisionResult.SAT
-        
-        assignment_true = assignment.copy()
-        assignment_true[variable] = True
-        
-        result = self._dpll(assignment_true)
-        if result == DecisionResult.SAT:
-            return DecisionResult.SAT
-        
-        assignment_false = assignment.copy()
-        assignment_false[variable] = False
-        
-        result = self._dpll(assignment_false)
-        return result
+                return False
+        return True
     
     def _evaluate_clause(self, clause: Clause, assignment: Dict[str, bool]) -> Optional[bool]:
         satisfied = False

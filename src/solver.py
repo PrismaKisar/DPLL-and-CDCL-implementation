@@ -138,3 +138,28 @@ class DPLLSolver:
                 self.assignment[var] = list(polarities)[0]
         
         return None
+    
+    def solve(self) -> DecisionResult:
+        while True:
+            result = self._unit_propagation()
+            if result == DecisionResult.UNSAT:
+                if not self.decision_stack:
+                    return DecisionResult.UNSAT
+                self._backtrack()
+                continue
+            
+            result = self._pure_literal_elimination()
+            if result == DecisionResult.UNSAT:
+                if not self.decision_stack:
+                    return DecisionResult.UNSAT
+                self._backtrack()
+                continue
+            
+            if self._all_clauses_satisfied():
+                return DecisionResult.SAT
+            
+            variable = self._choose_variable()
+            if variable is None:
+                return DecisionResult.SAT
+            
+            self._make_decision(variable, True)

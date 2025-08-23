@@ -235,6 +235,24 @@ class CDCLSolver:
     def _backjump(self, learned_clause: Clause) -> int:
         return 0
     
+    def _backtrack_to_level(self, target_level: int):
+        while self.decision_level > target_level:
+            assignments_to_remove: List[Assignment] = []
+            
+            for assignment in reversed(self.decision_stack):
+                if assignment.decision_level == self.decision_level:
+                    assignments_to_remove.append(assignment)
+                else:
+                    break
+            
+            for assignment in assignments_to_remove:
+                self.decision_stack.remove(assignment)
+                del self.assignment[assignment.variable]
+                if assignment.variable in self.implication_graph:
+                    del self.implication_graph[assignment.variable]
+            
+            self.decision_level -= 1
+    
     def _choose_variable(self) -> Optional[str]:
         all_variables: Set[str] = set()
         for clause in self.cnf.clauses + self.learned_clauses:

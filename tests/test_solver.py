@@ -766,3 +766,124 @@ class TestCDCLSolver:
         solver.assignment["p"] = False
         result = solver._evaluate_clause(clause)
         assert result is None
+    
+    def test_backtrack_to_level_single_level(self):
+        cnf = CNFFormula([])
+        solver = CDCLSolver(cnf)
+        
+        solver._make_decision("p", True)
+        solver._make_decision("q", False)
+        
+        assert solver.decision_level == 2
+        assert solver.assignment["p"] is True
+        assert solver.assignment["q"] is False
+        assert len(solver.decision_stack) == 2
+        assert len(solver.implication_graph) == 2
+        
+        solver._backtrack_to_level(1)
+        
+        assert solver.decision_level == 1
+        assert solver.assignment["p"] is True
+        assert "q" not in solver.assignment
+        assert len(solver.decision_stack) == 1
+        assert "p" in solver.implication_graph
+        assert "q" not in solver.implication_graph
+    
+    def test_backtrack_to_level_multiple_levels(self):
+        cnf = CNFFormula([])
+        solver = CDCLSolver(cnf)
+        
+        solver._make_decision("p", True)
+        solver._make_decision("q", False)
+        solver._make_decision("r", True)
+        
+        assert solver.decision_level == 3
+        assert len(solver.assignment) == 3
+        
+        solver._backtrack_to_level(1)
+        
+        assert solver.decision_level == 1
+        assert solver.assignment["p"] is True
+        assert "q" not in solver.assignment
+        assert "r" not in solver.assignment
+        assert len(solver.decision_stack) == 1
+        assert len(solver.implication_graph) == 1
+    
+    def test_backtrack_to_level_zero(self):
+        cnf = CNFFormula([])
+        solver = CDCLSolver(cnf)
+        
+        solver._make_decision("p", True)
+        solver._make_decision("q", False)
+        
+        solver._backtrack_to_level(0)
+        
+        assert solver.decision_level == 0
+        assert len(solver.assignment) == 0
+        assert len(solver.decision_stack) == 0
+        assert len(solver.implication_graph) == 0
+    
+    def test_backtrack_to_level_with_implications(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=False)
+        reason_clause = Clause([literal_p, literal_q])
+        cnf = CNFFormula([reason_clause])
+        solver = CDCLSolver(cnf)
+        
+        solver._make_decision("r", True)
+        solver._add_implication("p", True, reason_clause)
+        solver._make_decision("s", False)
+        
+        assert solver.decision_level == 2
+        assert len(solver.assignment) == 3
+        assert len(solver.implication_graph) == 3
+        
+        solver._backtrack_to_level(1)
+        
+        assert solver.decision_level == 1
+        assert solver.assignment["r"] is True
+        assert solver.assignment["p"] is True
+        assert "s" not in solver.assignment
+        assert len(solver.decision_stack) == 2
+        assert len(solver.implication_graph) == 2
+    
+    def test_backtrack_to_level_current_level(self):
+        cnf = CNFFormula([])
+        solver = CDCLSolver(cnf)
+        
+        solver._make_decision("p", True)
+        initial_level = solver.decision_level
+        initial_assignments = dict(solver.assignment)
+        
+        solver._backtrack_to_level(initial_level)
+        
+        assert solver.decision_level == initial_level
+        assert solver.assignment == initial_assignments
+    
+    def test_backtrack_to_level_mixed_assignments_same_level(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=False)
+        literal_r = Literal("r", negated=False)
+        reason1 = Clause([literal_p])
+        reason2 = Clause([literal_q])
+        
+        cnf = CNFFormula([])
+        solver = CDCLSolver(cnf)
+        
+        solver._make_decision("x", True)
+        solver._add_implication("p", True, reason1)
+        solver._add_implication("q", False, reason2)
+        solver._make_decision("y", False)
+        
+        assert solver.decision_level == 2
+        assert len(solver.assignment) == 4
+        
+        solver._backtrack_to_level(1)
+        
+        assert solver.decision_level == 1
+        assert solver.assignment["x"] is True
+        assert solver.assignment["p"] is True
+        assert solver.assignment["q"] is False
+        assert "y" not in solver.assignment
+        assert len(solver.decision_stack) == 3
+        assert len(solver.implication_graph) == 3

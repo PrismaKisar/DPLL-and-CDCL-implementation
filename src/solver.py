@@ -230,12 +230,88 @@ class CDCLSolver:
             return None
     
     def _analyze_conflict(self, conflict_clause: Clause) -> Clause:
-        # For now, just return the conflict clause as learned clause
-        # A full implementation would compute a 1-UIP clause
-        return conflict_clause
+        if self.decision_level == 0:
+            return conflict_clause
+            
+        current_clause = conflict_clause
+        current_level_vars = 0
+        
+        for lit in current_clause.literals:
+            if (lit.variable in self.implication_graph and 
+                self.implication_graph[lit.variable].decision_level == self.decision_level):
+                current_level_vars += 1
+        
+        if current_level_vars <= 1:
+            return current_clause
+            
+        most_recent_var = None
+        most_recent_idx = -1
+        
+        for lit in current_clause.literals:
+            if (lit.variable in self.implication_graph and 
+                self.implication_graph[lit.variable].decision_level == self.decision_level):
+                for i, assignment in enumerate(self.decision_stack):
+                    if (assignment.variable == lit.variable and 
+                        assignment.decision_level == self.decision_level):
+                        if i > most_recent_idx:
+                            most_recent_idx = i
+                            most_recent_var = lit.variable
+                        break
+        
+        if most_recent_var is None or most_recent_var not in self.implication_graph:
+            return current_clause
+            
+        node = self.implication_graph[most_recent_var]
+        if node.reason is None:
+            return current_clause
+            
+        resolved_literals: List[Literal] = []
+        
+        for lit in current_clause.literals:
+            if lit.variable != most_recent_var:
+                resolved_literals.append(lit)
+                
+        for lit in node.reason.literals:
+            if lit.variable != most_recent_var:
+                already_exists = False
+                for existing_lit in resolved_literals:
+                    if (existing_lit.variable == lit.variable and 
+                        existing_lit.negated == lit.negated):
+                        already_exists = True
+                        break
+                if not already_exists:
+                    resolved_literals.append(lit)
+        
+        resolved_clause = Clause(resolved_literals)
+        
+        new_current_level_vars = 0
+        for lit in resolved_clause.literals:
+            if (lit.variable in self.implication_graph and 
+                self.implication_graph[lit.variable].decision_level == self.decision_level):
+                new_current_level_vars += 1
+                
+        if new_current_level_vars <= 1:
+            return resolved_clause
+        else:
+            return self._analyze_conflict(resolved_clause)
     
     def _backjump(self, learned_clause: Clause) -> int:
-        return 0
+        if len(learned_clause.literals) <= 1:
+            return 0
+            
+        max_level = 0
+        second_max_level = 0
+        
+        for lit in learned_clause.literals:
+            if lit.variable in self.implication_graph:
+                level = self.implication_graph[lit.variable].decision_level
+                if level > max_level:
+                    second_max_level = max_level
+                    max_level = level
+                elif level > second_max_level and level < max_level:
+                    second_max_level = level
+        
+        return second_max_level
     
     def _backtrack_to_level(self, target_level: int):
         while self.decision_level > target_level:

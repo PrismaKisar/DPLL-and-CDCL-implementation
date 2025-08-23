@@ -1137,3 +1137,152 @@ class TestCDCLSolver:
         test_solver = TestCDCLSolver(cnf)
         result = test_solver.solve()
         assert result == DecisionResult.SAT
+    
+    def test_analyze_conflict_1uip(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=False)
+        literal_r = Literal("r", negated=False)
+        
+        clause1 = Clause([literal_p, literal_q])
+        clause2 = Clause([Literal("p", negated=True), literal_r])
+        clause3 = Clause([Literal("q", negated=True), Literal("r", negated=True)])
+        cnf = CNFFormula([clause1, clause2, clause3])
+        solver = CDCLSolver(cnf)
+        
+        solver._make_decision("p", True)
+        solver._add_implication("q", True, clause1)
+        solver._add_implication("r", True, clause2)
+        
+        conflict_clause = clause3
+        learned = solver._analyze_conflict(conflict_clause)
+        
+        assert len(learned.literals) >= 1
+        
+    def test_analyze_conflict_decision_level_zero(self):
+        literal_p = Literal("p", negated=False)
+        conflict_clause = Clause([literal_p])
+        cnf = CNFFormula([])
+        solver = CDCLSolver(cnf)
+        
+        result = solver._analyze_conflict(conflict_clause)
+        assert result == conflict_clause
+        
+    def test_backjump_single_literal(self):
+        literal_p = Literal("p", negated=False)
+        learned_clause = Clause([literal_p])
+        cnf = CNFFormula([])
+        solver = CDCLSolver(cnf)
+        
+        level = solver._backjump(learned_clause)
+        assert level == 0
+        
+    def test_backjump_multiple_levels(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=False)
+        literal_r = Literal("r", negated=False)
+        
+        learned_clause = Clause([literal_p, literal_q, literal_r])
+        cnf = CNFFormula([])
+        solver = CDCLSolver(cnf)
+        
+        solver._make_decision("p", True)
+        solver._make_decision("q", True)
+        solver._make_decision("r", True)
+        
+        level = solver._backjump(learned_clause)
+        assert level == 2
+        
+    def test_backjump_with_implications(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=False)
+        
+        reason = Clause([literal_p])
+        learned_clause = Clause([literal_p, literal_q])
+        cnf = CNFFormula([])
+        solver = CDCLSolver(cnf)
+        
+        solver._make_decision("p", True)
+        solver._make_decision("x", True)
+        solver._add_implication("q", True, reason)
+        
+        level = solver._backjump(learned_clause)
+        assert level == 1
+    
+    def test_analyze_conflict_edge_cases(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=False)
+        
+        conflict_clause = Clause([literal_p, literal_q])
+        cnf = CNFFormula([])
+        solver = CDCLSolver(cnf)
+        solver.decision_level = 1
+        
+        result = solver._analyze_conflict(conflict_clause)
+        assert result == conflict_clause
+        
+        solver._make_decision("p", True)
+        solver._make_decision("q", True)
+        
+        reason_p = Clause([Literal("p", negated=True), literal_q])
+        solver.implication_graph["p"].reason = reason_p
+        
+        result = solver._analyze_conflict(conflict_clause)
+        assert len(result.literals) >= 1
+        
+    def test_backjump_with_same_levels(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=False)
+        literal_r = Literal("r", negated=False)
+        
+        learned_clause = Clause([literal_p, literal_q, literal_r])
+        cnf = CNFFormula([])
+        solver = CDCLSolver(cnf)
+        
+        solver._make_decision("p", True)
+        solver._make_decision("q", True)
+        solver._make_decision("r", True)
+        solver.implication_graph["q"].decision_level = 1
+        
+        level = solver._backjump(learned_clause)
+        assert level == 1
+    
+    def test_analyze_conflict_recursive_case(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=False)
+        literal_r = Literal("r", negated=False)
+        
+        cnf = CNFFormula([])
+        solver = CDCLSolver(cnf)
+        
+        solver._make_decision("p", True)
+        solver._make_decision("q", True) 
+        solver._make_decision("r", True)
+        
+        reason_p = Clause([Literal("p", negated=True), literal_q, literal_r])
+        reason_q = Clause([Literal("q", negated=True), literal_r])
+        
+        solver.implication_graph["p"].reason = reason_p
+        solver.implication_graph["q"].reason = reason_q
+        
+        conflict_clause = Clause([Literal("p", negated=True), Literal("q", negated=True)])
+        
+        result = solver._analyze_conflict(conflict_clause)
+        assert len(result.literals) >= 1
+        
+    def test_analyze_conflict_duplicate_literals(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=False)
+        
+        cnf = CNFFormula([])
+        solver = CDCLSolver(cnf)
+        
+        solver._make_decision("p", True)
+        solver._make_decision("q", True)
+        
+        reason_p = Clause([literal_p, literal_q])
+        solver.implication_graph["p"].reason = reason_p
+        
+        conflict_clause = Clause([literal_p, literal_q])
+        
+        result = solver._analyze_conflict(conflict_clause)
+        assert len(result.literals) >= 1

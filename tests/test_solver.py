@@ -1,4 +1,4 @@
-from src.solver import DPLLSolver, DecisionResult, Assignment
+from src.solver import DPLLSolver, DecisionResult, Assignment, CDCLSolver, ImplicationNode
 from src.logic_ast import CNFFormula, Clause, Literal
 
 
@@ -520,3 +520,143 @@ class TestDPLLSolver:
         
         solver._pure_literal_elimination = original_method
         solver._all_clauses_satisfied = original_all_satisfied
+
+
+class TestCDCLSolver:
+    
+    def test_init(self):
+        cnf = CNFFormula([])
+        solver = CDCLSolver(cnf)
+        assert solver.cnf == cnf
+        assert solver.assignment == {}
+        assert solver.decision_stack == []
+        assert solver.learned_clauses == []
+        assert solver.decision_level == 0
+        assert solver.implication_graph == {}
+    
+    def test_make_decision(self):
+        cnf = CNFFormula([])
+        solver = CDCLSolver(cnf)
+        
+        solver._make_decision("p", True)
+        
+        assert solver.assignment["p"] is True
+        assert solver.decision_level == 1
+        assert len(solver.decision_stack) == 1
+        
+        assignment = solver.decision_stack[0]
+        assert assignment.variable == "p"
+        assert assignment.value is True
+        assert assignment.decision_level == 1
+        assert assignment.reason is None
+        
+        node = solver.implication_graph["p"]
+        assert node.variable == "p"
+        assert node.value is True
+        assert node.decision_level == 1
+        assert node.reason is None
+        assert node.antecedents == []
+    
+    def test_add_implication(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=True)
+        reason_clause = Clause([literal_p, literal_q])
+        cnf = CNFFormula([reason_clause])
+        solver = CDCLSolver(cnf)
+        
+        solver.assignment["q"] = False
+        solver._add_implication("p", True, reason_clause)
+        
+        assert solver.assignment["p"] is True
+        assert len(solver.decision_stack) == 1
+        
+        assignment = solver.decision_stack[0]
+        assert assignment.variable == "p"
+        assert assignment.value is True
+        assert assignment.decision_level == 0
+        assert assignment.reason == reason_clause
+        
+        node = solver.implication_graph["p"]
+        assert node.variable == "p"
+        assert node.value is True
+        assert node.decision_level == 0
+        assert node.reason == reason_clause
+        assert "q" in node.antecedents
+    
+    def test_choose_variable_with_learned_clauses(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=False)
+        literal_r = Literal("r", negated=False)
+        
+        original_clause = Clause([literal_p])
+        learned_clause = Clause([literal_q, literal_r])
+        
+        cnf = CNFFormula([original_clause])
+        solver = CDCLSolver(cnf)
+        solver.learned_clauses.append(learned_clause)
+        
+        solver.assignment["p"] = True
+        var = solver._choose_variable()
+        assert var in ["q", "r"]
+        
+        solver.assignment["q"] = True
+        var = solver._choose_variable()
+        assert var == "r"
+        
+        solver.assignment["r"] = False
+        var = solver._choose_variable()
+        assert var is None
+    
+    def test_all_clauses_satisfied_with_learned_clauses(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=False)
+        
+        original_clause = Clause([literal_p])
+        learned_clause = Clause([literal_q])
+        
+        cnf = CNFFormula([original_clause])
+        solver = CDCLSolver(cnf)
+        solver.learned_clauses.append(learned_clause)
+        
+        assert solver._all_clauses_satisfied() is False
+        
+        solver.assignment["p"] = True
+        assert solver._all_clauses_satisfied() is False
+        
+        solver.assignment["q"] = True
+        assert solver._all_clauses_satisfied() is True
+    
+    def test_implication_node_creation(self):
+        node = ImplicationNode("x", True, 2, None, ["y", "z"])
+        assert node.variable == "x"
+        assert node.value is True
+        assert node.decision_level == 2
+        assert node.reason is None
+        assert node.antecedents == ["y", "z"]
+    
+    def test_implication_node_default_antecedents(self):
+        node = ImplicationNode("x", False, 1)
+        assert node.antecedents == []
+    
+    def test_assignment_with_reason(self):
+        literal = Literal("p", negated=False)
+        reason_clause = Clause([literal])
+        assignment = Assignment("p", True, 1, reason_clause)
+        
+        assert assignment.variable == "p"
+        assert assignment.value is True
+        assert assignment.decision_level == 1
+        assert assignment.reason == reason_clause
+    
+    def test_multiple_decisions_increment_level(self):
+        cnf = CNFFormula([])
+        solver = CDCLSolver(cnf)
+        
+        solver._make_decision("p", True)
+        assert solver.decision_level == 1
+        
+        solver._make_decision("q", False)
+        assert solver.decision_level == 2
+        
+        assert solver.implication_graph["p"].decision_level == 1
+        assert solver.implication_graph["q"].decision_level == 2

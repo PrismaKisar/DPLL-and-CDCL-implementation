@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional, Set
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 from src.logic_ast import CNFFormula, Clause, Literal
@@ -15,6 +15,16 @@ class Assignment:
     variable: str
     value: bool
     decision_level: int = 0
+    reason: Optional[Clause] = None
+
+
+@dataclass
+class ImplicationNode:
+    variable: str
+    value: bool
+    decision_level: int
+    reason: Optional[Clause] = None
+    antecedents: List[str] = field(default_factory=lambda: [])
     
 
 class DPLLSolver:
@@ -172,24 +182,62 @@ class CDCLSolver:
         self.decision_stack: List[Assignment] = []
         self.learned_clauses: List[Clause] = []
         self.decision_level = 0
+        self.implication_graph: Dict[str, ImplicationNode] = {}
         
     def _unit_propagation(self) -> Optional[Clause]:
-        pass
+        return None
     
     def _analyze_conflict(self, conflict_clause: Clause) -> Clause:
-        pass
+        return conflict_clause
     
     def _backjump(self, learned_clause: Clause) -> int:
-        pass
+        return 0
     
     def _choose_variable(self) -> Optional[str]:
-        pass
+        all_variables: Set[str] = set()
+        for clause in self.cnf.clauses + self.learned_clauses:
+            for lit in clause.literals:
+                all_variables.add(lit.variable)
+        
+        for var in all_variables:
+            if var not in self.assignment:
+                return var
+        return None
     
     def _make_decision(self, variable: str, value: bool):
-        pass
+        self.decision_level += 1
+        assignment = Assignment(variable, value, self.decision_level, None)
+        self.decision_stack.append(assignment)
+        self.assignment[variable] = value
+        
+        node = ImplicationNode(variable, value, self.decision_level, None, [])
+        self.implication_graph[variable] = node
+    
+    def _add_implication(self, variable: str, value: bool, reason: Clause):
+        assignment = Assignment(variable, value, self.decision_level, reason)
+        self.decision_stack.append(assignment)
+        self.assignment[variable] = value
+        
+        antecedents: List[str] = []
+        for lit in reason.literals:
+            if lit.variable != variable and lit.variable in self.assignment:
+                antecedents.append(lit.variable)
+        
+        node = ImplicationNode(variable, value, self.decision_level, reason, antecedents)
+        self.implication_graph[variable] = node
     
     def _all_clauses_satisfied(self) -> bool:
-        pass
+        for clause in self.cnf.clauses + self.learned_clauses:
+            satisfied = False
+            for lit in clause.literals:
+                if lit.variable in self.assignment:
+                    lit_value = self.assignment[lit.variable]
+                    if (not lit.negated and lit_value) or (lit.negated and not lit_value):
+                        satisfied = True
+                        break
+            if not satisfied:
+                return False
+        return True
     
     def solve(self) -> DecisionResult:
-        pass
+        return DecisionResult.SAT

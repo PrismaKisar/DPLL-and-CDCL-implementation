@@ -82,10 +82,11 @@ class TestDPLLSolver:
     def test_unit_propagation_chain(self):
         literal_p = Literal("p", negated=False)
         literal_q = Literal("q", negated=True)
+        literal_q_pos = Literal("q", negated=False)
         literal_r = Literal("r", negated=False)
         clause1 = Clause([literal_p])
         clause2 = Clause([literal_q])
-        clause3 = Clause([Literal("q", negated=False), literal_r])
+        clause3 = Clause([literal_q_pos, literal_r])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = DPLLSolver(cnf)
         
@@ -154,8 +155,9 @@ class TestDPLLSolver:
     def test_simplify_formula_satisfied_clause_removal(self):
         literal_p = Literal("p", negated=False)
         literal_q = Literal("q", negated=False)
+        literal_r = Literal("r", negated=False)
         clause1 = Clause([literal_p, literal_q])
-        clause2 = Clause([Literal("r", negated=False)])
+        clause2 = Clause([literal_r])
         cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
         
@@ -345,8 +347,9 @@ class TestDPLLSolver:
     def test_solve_two_variables_sat(self):
         literal_p = Literal("p", negated=False)
         literal_q = Literal("q", negated=False)
+        literal_p_neg = Literal("p", negated=True)
         clause1 = Clause([literal_p, literal_q])
-        clause2 = Clause([Literal("p", negated=True), literal_q])
+        clause2 = Clause([literal_p_neg, literal_q])
         cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
         
@@ -358,8 +361,10 @@ class TestDPLLSolver:
         literal_p = Literal("p", negated=False)
         literal_q = Literal("q", negated=False)
         literal_r = Literal("r", negated=False)
-        clause1 = Clause([Literal("p", negated=True), literal_q])
-        clause2 = Clause([Literal("q", negated=True), literal_r])
+        literal_p_neg = Literal("p", negated=True)
+        literal_q_neg = Literal("q", negated=True)
+        clause1 = Clause([literal_p_neg, literal_q])
+        clause2 = Clause([literal_q_neg, literal_r])
         clause3 = Clause([literal_p])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = DPLLSolver(cnf)
@@ -374,10 +379,13 @@ class TestDPLLSolver:
         literal_p = Literal("p", negated=False)
         literal_q = Literal("q", negated=False)
         literal_r = Literal("r", negated=False)
+        literal_p_neg = Literal("p", negated=True)
+        literal_q_neg = Literal("q", negated=True)
+        literal_r_neg = Literal("r", negated=True)
         clause1 = Clause([literal_p, literal_q])
-        clause2 = Clause([literal_p, Literal("q", negated=True)])
-        clause3 = Clause([Literal("p", negated=True), literal_r])
-        clause4 = Clause([Literal("p", negated=True), Literal("r", negated=True)])
+        clause2 = Clause([literal_p, literal_q_neg])
+        clause3 = Clause([literal_p_neg, literal_r])
+        clause4 = Clause([literal_p_neg, literal_r_neg])
         cnf = CNFFormula([clause1, clause2, clause3, clause4])
         solver = DPLLSolver(cnf)
         
@@ -388,9 +396,12 @@ class TestDPLLSolver:
         literal_x1 = Literal("x1", negated=False)
         literal_x2 = Literal("x2", negated=False)
         literal_x3 = Literal("x3", negated=False)
+        literal_x1_neg = Literal("x1", negated=True)
+        literal_x2_neg = Literal("x2", negated=True)
+        literal_x3_neg = Literal("x3", negated=True)
         clause1 = Clause([literal_x1, literal_x2, literal_x3])
-        clause2 = Clause([Literal("x1", negated=True), Literal("x2", negated=True), literal_x3])
-        clause3 = Clause([literal_x1, Literal("x2", negated=True), Literal("x3", negated=True)])
+        clause2 = Clause([literal_x1_neg, literal_x2_neg, literal_x3])
+        clause3 = Clause([literal_x1, literal_x2_neg, literal_x3_neg])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = DPLLSolver(cnf)
         
@@ -417,9 +428,11 @@ class TestDPLLSolver:
         literal_a = Literal("a", negated=False)
         literal_b = Literal("b", negated=False)
         literal_c = Literal("c", negated=False)
+        literal_a_neg = Literal("a", negated=True)
+        literal_b_neg = Literal("b", negated=True)
         clause1 = Clause([literal_a])
-        clause2 = Clause([Literal("a", negated=True), literal_b])
-        clause3 = Clause([Literal("b", negated=True), literal_c])
+        clause2 = Clause([literal_a_neg, literal_b])
+        clause3 = Clause([literal_b_neg, literal_c])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = DPLLSolver(cnf)
         
@@ -433,12 +446,15 @@ class TestDPLLSolver:
         literal_x = Literal("x", negated=False)
         literal_y = Literal("y", negated=False)
         literal_z = Literal("z", negated=False)
+        literal_x_neg = Literal("x", negated=True)
+        literal_y_neg = Literal("y", negated=True)
+        literal_z_neg = Literal("z", negated=True)
         clause1 = Clause([literal_x, literal_y])
-        clause2 = Clause([literal_x, Literal("y", negated=True)])
-        clause3 = Clause([Literal("x", negated=True), literal_y])
-        clause4 = Clause([Literal("x", negated=True), Literal("y", negated=True)])
+        clause2 = Clause([literal_x, literal_y_neg])
+        clause3 = Clause([literal_x_neg, literal_y])
+        clause4 = Clause([literal_x_neg, literal_y_neg])
         clause5 = Clause([literal_z])
-        clause6 = Clause([Literal("z", negated=True)])
+        clause6 = Clause([literal_z_neg])
         cnf = CNFFormula([clause1, clause2, clause3, clause4, clause5, clause6])
         solver = DPLLSolver(cnf)
         
@@ -692,9 +708,11 @@ class TestCDCLSolver:
         literal_p = Literal("p", negated=False)
         literal_q = Literal("q", negated=False)
         literal_r = Literal("r", negated=False)
+        literal_p_neg = Literal("p", negated=True)
+        literal_q_neg = Literal("q", negated=True)
         clause1 = Clause([literal_p])
-        clause2 = Clause([Literal("p", negated=True), literal_q])
-        clause3 = Clause([Literal("q", negated=True), literal_r])
+        clause2 = Clause([literal_p_neg, literal_q])
+        clause3 = Clause([literal_q_neg, literal_r])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = CDCLSolver(cnf)
         
@@ -713,8 +731,9 @@ class TestCDCLSolver:
     def test_unit_propagation_with_learned_clauses(self):
         literal_p = Literal("p", negated=False)
         literal_q = Literal("q", negated=False)
+        literal_p_neg = Literal("p", negated=True)
         original_clause = Clause([literal_p])
-        learned_clause = Clause([Literal("p", negated=True), literal_q])
+        learned_clause = Clause([literal_p_neg, literal_q])
         
         cnf = CNFFormula([original_clause])
         solver = CDCLSolver(cnf)
@@ -921,8 +940,9 @@ class TestCDCLSolver:
     def test_solve_with_unit_propagation(self):
         literal_p = Literal("p", negated=False)
         literal_q = Literal("q", negated=False)
+        literal_p_neg = Literal("p", negated=True)
         clause1 = Clause([literal_p])
-        clause2 = Clause([Literal("p", negated=True), literal_q])
+        clause2 = Clause([literal_p_neg, literal_q])
         cnf = CNFFormula([clause1, clause2])
         solver = CDCLSolver(cnf)
         
@@ -945,9 +965,11 @@ class TestCDCLSolver:
     def test_solve_with_conflict_and_learning(self):
         literal_p = Literal("p", negated=False)
         literal_q = Literal("q", negated=False)
+        literal_p_neg = Literal("p", negated=True)
+        literal_q_neg = Literal("q", negated=True)
         clause1 = Clause([literal_p, literal_q])
-        clause2 = Clause([Literal("p", negated=True)])
-        clause3 = Clause([Literal("q", negated=True)])
+        clause2 = Clause([literal_p_neg])
+        clause3 = Clause([literal_q_neg])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = CDCLSolver(cnf)
         
@@ -959,8 +981,10 @@ class TestCDCLSolver:
         literal_p = Literal("p", negated=False)
         literal_q = Literal("q", negated=False)
         literal_r = Literal("r", negated=False)
-        clause1 = Clause([Literal("p", negated=True), literal_q])
-        clause2 = Clause([Literal("q", negated=True), literal_r])
+        literal_p_neg = Literal("p", negated=True)
+        literal_q_neg = Literal("q", negated=True)
+        clause1 = Clause([literal_p_neg, literal_q])
+        clause2 = Clause([literal_q_neg, literal_r])
         clause3 = Clause([literal_p])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = CDCLSolver(cnf)
@@ -1007,7 +1031,8 @@ class TestCDCLSolver:
     def test_solve_conflict_at_decision_level_zero(self):
         literal_p = Literal("p", negated=False)
         clause1 = Clause([literal_p])
-        clause2 = Clause([Literal("p", negated=True)])
+        literal_p_neg = Literal("p", negated=True)
+        clause2 = Clause([literal_p_neg])
         cnf = CNFFormula([clause1, clause2])
         solver = CDCLSolver(cnf)
         
@@ -1041,8 +1066,10 @@ class TestCDCLSolver:
         literal_c = Literal("c", negated=False)
         
         clause1 = Clause([literal_a, literal_b])
-        clause2 = Clause([Literal("a", negated=True), literal_c])
-        clause3 = Clause([Literal("b", negated=True), literal_c])
+        literal_a_neg = Literal("a", negated=True)
+        literal_b_neg = Literal("b", negated=True)
+        clause2 = Clause([literal_a_neg, literal_c])
+        clause3 = Clause([literal_b_neg, literal_c])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = CDCLSolver(cnf)
         
@@ -1066,9 +1093,12 @@ class TestCDCLSolver:
         literal_z = Literal("z", negated=False)
         
         clause1 = Clause([literal_x, literal_y])
-        clause2 = Clause([literal_x, Literal("y", negated=True)])
-        clause3 = Clause([Literal("x", negated=True), literal_z])
-        clause4 = Clause([Literal("z", negated=True)])
+        literal_x_neg = Literal("x", negated=True)
+        literal_y_neg = Literal("y", negated=True)
+        literal_z_neg = Literal("z", negated=True)
+        clause2 = Clause([literal_x, literal_y_neg])
+        clause3 = Clause([literal_x_neg, literal_z])
+        clause4 = Clause([literal_z_neg])
         cnf = CNFFormula([clause1, clause2, clause3, clause4])
         solver = CDCLSolver(cnf)
         
@@ -1099,7 +1129,8 @@ class TestCDCLSolver:
             def _unit_propagation(self):
                 if self.decision_level > 0 and not self.conflict_forced:
                     self.conflict_forced = True
-                    return Clause([Literal("fake_conflict", negated=True)])
+                    fake_literal = Literal("fake_conflict", negated=True)
+                    return Clause([fake_literal])
                 return super()._unit_propagation()
                 
         test_solver = BackjumpTestSolver(cnf)
@@ -1144,8 +1175,11 @@ class TestCDCLSolver:
         literal_r = Literal("r", negated=False)
         
         clause1 = Clause([literal_p, literal_q])
-        clause2 = Clause([Literal("p", negated=True), literal_r])
-        clause3 = Clause([Literal("q", negated=True), Literal("r", negated=True)])
+        literal_p_neg = Literal("p", negated=True)
+        literal_q_neg = Literal("q", negated=True)
+        literal_r_neg = Literal("r", negated=True)
+        clause2 = Clause([literal_p_neg, literal_r])
+        clause3 = Clause([literal_q_neg, literal_r_neg])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = CDCLSolver(cnf)
         
@@ -1223,7 +1257,8 @@ class TestCDCLSolver:
         solver._make_decision("p", True)
         solver._make_decision("q", True)
         
-        reason_p = Clause([Literal("p", negated=True), literal_q])
+        literal_p_neg = Literal("p", negated=True)
+        reason_p = Clause([literal_p_neg, literal_q])
         solver.implication_graph["p"].reason = reason_p
         
         result = solver._analyze_conflict(conflict_clause)
@@ -1247,7 +1282,6 @@ class TestCDCLSolver:
         assert level == 1
     
     def test_analyze_conflict_recursive_case(self):
-        literal_p = Literal("p", negated=False)
         literal_q = Literal("q", negated=False)
         literal_r = Literal("r", negated=False)
         
@@ -1258,13 +1292,17 @@ class TestCDCLSolver:
         solver._make_decision("q", True) 
         solver._make_decision("r", True)
         
-        reason_p = Clause([Literal("p", negated=True), literal_q, literal_r])
-        reason_q = Clause([Literal("q", negated=True), literal_r])
+        literal_p_neg = Literal("p", negated=True)
+        literal_q_neg = Literal("q", negated=True)
+        reason_p = Clause([literal_p_neg, literal_q, literal_r])
+        reason_q = Clause([literal_q_neg, literal_r])
         
         solver.implication_graph["p"].reason = reason_p
         solver.implication_graph["q"].reason = reason_q
         
-        conflict_clause = Clause([Literal("p", negated=True), Literal("q", negated=True)])
+        literal_p_neg = Literal("p", negated=True)
+        literal_q_neg = Literal("q", negated=True)
+        conflict_clause = Clause([literal_p_neg, literal_q_neg])
         
         result = solver._analyze_conflict(conflict_clause)
         assert len(result.literals) >= 1

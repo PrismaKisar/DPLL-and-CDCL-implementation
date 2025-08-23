@@ -660,3 +660,109 @@ class TestCDCLSolver:
         
         assert solver.implication_graph["p"].decision_level == 1
         assert solver.implication_graph["q"].decision_level == 2
+    
+    def test_unit_propagation_no_conflict(self):
+        literal_p = Literal("p", negated=False)
+        clause = Clause([literal_p])
+        cnf = CNFFormula([clause])
+        solver = CDCLSolver(cnf)
+        
+        conflict = solver._unit_propagation()
+        assert conflict is None
+        assert solver.assignment["p"] is True
+        assert "p" in solver.implication_graph
+        assert solver.implication_graph["p"].reason == clause
+    
+    def test_unit_propagation_with_conflict(self):
+        literal_p_pos = Literal("p", negated=False)
+        literal_p_neg = Literal("p", negated=True)
+        clause1 = Clause([literal_p_pos])
+        clause2 = Clause([literal_p_neg])
+        cnf = CNFFormula([clause1, clause2])
+        solver = CDCLSolver(cnf)
+        
+        conflict = solver._unit_propagation()
+        assert conflict == clause2
+        assert solver.assignment["p"] is True
+    
+    def test_unit_propagation_chain(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=False)
+        literal_r = Literal("r", negated=False)
+        clause1 = Clause([literal_p])
+        clause2 = Clause([Literal("p", negated=True), literal_q])
+        clause3 = Clause([Literal("q", negated=True), literal_r])
+        cnf = CNFFormula([clause1, clause2, clause3])
+        solver = CDCLSolver(cnf)
+        
+        conflict = solver._unit_propagation()
+        assert conflict is None
+        assert solver.assignment["p"] is True
+        assert solver.assignment["q"] is True
+        assert solver.assignment["r"] is True
+        
+        assert solver.implication_graph["p"].reason == clause1
+        assert solver.implication_graph["q"].reason == clause2
+        assert solver.implication_graph["r"].reason == clause3
+        assert "p" in solver.implication_graph["q"].antecedents
+        assert "q" in solver.implication_graph["r"].antecedents
+    
+    def test_unit_propagation_with_learned_clauses(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=False)
+        original_clause = Clause([literal_p])
+        learned_clause = Clause([Literal("p", negated=True), literal_q])
+        
+        cnf = CNFFormula([original_clause])
+        solver = CDCLSolver(cnf)
+        solver.learned_clauses.append(learned_clause)
+        
+        conflict = solver._unit_propagation()
+        assert conflict is None
+        assert solver.assignment["p"] is True
+        assert solver.assignment["q"] is True
+        assert solver.implication_graph["q"].reason == learned_clause
+    
+    def test_evaluate_clause_satisfied(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=True)
+        clause = Clause([literal_p, literal_q])
+        cnf = CNFFormula([clause])
+        solver = CDCLSolver(cnf)
+        
+        solver.assignment["p"] = True
+        result = solver._evaluate_clause(clause)
+        assert result is True
+    
+    def test_evaluate_clause_unsatisfied(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=False)
+        clause = Clause([literal_p, literal_q])
+        cnf = CNFFormula([clause])
+        solver = CDCLSolver(cnf)
+        
+        solver.assignment["p"] = False
+        solver.assignment["q"] = False
+        result = solver._evaluate_clause(clause)
+        assert result is False
+    
+    def test_evaluate_clause_unassigned(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=False)
+        clause = Clause([literal_p, literal_q])
+        cnf = CNFFormula([clause])
+        solver = CDCLSolver(cnf)
+        
+        result = solver._evaluate_clause(clause)
+        assert result is None
+    
+    def test_evaluate_clause_partial_assignment(self):
+        literal_p = Literal("p", negated=False)
+        literal_q = Literal("q", negated=False)
+        clause = Clause([literal_p, literal_q])
+        cnf = CNFFormula([clause])
+        solver = CDCLSolver(cnf)
+        
+        solver.assignment["p"] = False
+        result = solver._evaluate_clause(clause)
+        assert result is None

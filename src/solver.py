@@ -185,6 +185,48 @@ class CDCLSolver:
         self.implication_graph: Dict[str, ImplicationNode] = {}
         
     def _unit_propagation(self) -> Optional[Clause]:
+        changed = True
+        while changed:
+            changed = False
+            
+            for clause in self.cnf.clauses + self.learned_clauses:
+                clause_state = self._evaluate_clause(clause)
+                
+                if clause_state is False:
+                    return clause
+                
+                if clause_state is None:
+                    unassigned_literals: List[Literal] = []
+                    for lit in clause.literals:
+                        if lit.variable not in self.assignment:
+                            unassigned_literals.append(lit)
+                    
+                    if len(unassigned_literals) == 1:
+                        lit = unassigned_literals[0]
+                        value = not lit.negated
+                        self._add_implication(lit.variable, value, clause)
+                        changed = True
+        
+        return None
+    
+    def _evaluate_clause(self, clause: Clause) -> Optional[bool]:
+        satisfied = False
+        unassigned_count = 0
+        
+        for lit in clause.literals:
+            if lit.variable in self.assignment:
+                lit_value = self.assignment[lit.variable]
+                if (not lit.negated and lit_value) or (lit.negated and not lit_value):
+                    satisfied = True
+                    break
+            else:
+                unassigned_count += 1
+        
+        if satisfied:
+            return True
+        elif unassigned_count == 0:
+            return False
+        else:
         return None
     
     def _analyze_conflict(self, conflict_clause: Clause) -> Clause:

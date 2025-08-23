@@ -4,18 +4,20 @@ from src.preprocessing import eliminate_implications, push_negations_inward, to_
 from src.logic_ast import Variable, Not, And, Or, Implies, Biconditional, CNFFormula
 
 
+P = Variable("p")
+Q = Variable("q")
+R = Variable("r")
+
+
 class TestEliminateImplications:
     
     def test_variable_unchanged(self):
-        p = Variable("p")
-        result = eliminate_implications(p)
+        result = eliminate_implications(P)
         assert isinstance(result, Variable)
         assert result.name == "p"
     
     def test_simple_implication(self):
-        p = Variable("p")
-        q = Variable("q")
-        impl = Implies(p, q)
+        impl = Implies(P, Q)
         result = eliminate_implications(impl)
         assert isinstance(result, Or)
         assert isinstance(result.left, Not)
@@ -25,18 +27,14 @@ class TestEliminateImplications:
         assert result.right.name == "q"
     
     def test_biconditional(self):
-        p = Variable("p")
-        q = Variable("q")
-        bicon = Biconditional(p, q)
+        bicon = Biconditional(P, Q)
         result = eliminate_implications(bicon)
         assert isinstance(result, And)
         assert isinstance(result.left, Or)
         assert isinstance(result.right, Or)
     
     def test_and_unchanged(self):
-        p = Variable("p")
-        q = Variable("q")
-        and_formula = And(p, q)
+        and_formula = And(P, Q)
         result = eliminate_implications(and_formula)
         assert isinstance(result, And)
         assert isinstance(result.left, Variable)
@@ -45,9 +43,7 @@ class TestEliminateImplications:
         assert result.right.name == "q"
     
     def test_or_unchanged(self):
-        p = Variable("p")
-        q = Variable("q")
-        or_formula = Or(p, q)
+        or_formula = Or(P, Q)
         result = eliminate_implications(or_formula)
         assert isinstance(result, Or)
         assert isinstance(result.left, Variable)
@@ -67,22 +63,18 @@ class TestEliminateImplications:
 class TestPushNegationsInward:
     
     def test_variable_unchanged(self):
-        p = Variable("p")
-        result = push_negations_inward(p)
+        result = push_negations_inward(P)
         assert isinstance(result, Variable)
         assert result.name == "p"
     
     def test_double_negation(self):
-        p = Variable("p")
-        double_neg = Not(Not(p))
+        double_neg = Not(Not(P))
         result = push_negations_inward(double_neg)
         assert isinstance(result, Variable)
         assert result.name == "p"
     
     def test_negated_and(self):
-        p = Variable("p")
-        q = Variable("q")
-        negated_and = Not(And(p, q))
+        negated_and = Not(And(P, Q))
         result = push_negations_inward(negated_and)
         assert isinstance(result, Or)
         assert isinstance(result.left, Not)
@@ -93,9 +85,7 @@ class TestPushNegationsInward:
         assert result.right.operand.name == "q"
     
     def test_negated_or(self):
-        p = Variable("p")
-        q = Variable("q")
-        negated_or = Not(Or(p, q))
+        negated_or = Not(Or(P, Q))
         result = push_negations_inward(negated_or)
         assert isinstance(result, And)
         assert isinstance(result.left, Not)
@@ -106,9 +96,7 @@ class TestPushNegationsInward:
         assert result.right.operand.name == "q"
     
     def test_and_unchanged(self):
-        p = Variable("p")
-        q = Variable("q")
-        and_formula = And(p, q)
+        and_formula = And(P, Q)
         result = push_negations_inward(and_formula)
         assert isinstance(result, And)
         assert isinstance(result.left, Variable)
@@ -117,9 +105,7 @@ class TestPushNegationsInward:
         assert result.right.name == "q"
     
     def test_or_unchanged(self):
-        p = Variable("p")
-        q = Variable("q")
-        or_formula = Or(p, q)
+        or_formula = Or(P, Q)
         result = push_negations_inward(or_formula)
         assert isinstance(result, Or)
         assert isinstance(result.left, Variable)
@@ -148,15 +134,12 @@ class TestPushNegationsInward:
 class TestToNNF:
     
     def test_simple_variable(self):
-        p = Variable("p")
-        result = to_nnf(p)
+        result = to_nnf(P)
         assert isinstance(result, Variable)
         assert result.name == "p"
     
     def test_implication_to_nnf(self):
-        p = Variable("p")
-        q = Variable("q")
-        impl = Implies(p, q)
+        impl = Implies(P, Q)
         result = to_nnf(impl)
         assert isinstance(result, Or)
         assert isinstance(result.left, Not)
@@ -166,10 +149,7 @@ class TestToNNF:
         assert result.right.name == "q"
     
     def test_complex_formula_to_nnf(self):
-        p = Variable("p")
-        q = Variable("q")
-        r = Variable("r")
-        formula = Not(Implies(And(p, q), r))
+        formula = Not(Implies(And(P, Q), R))
         result = to_nnf(formula)
         assert isinstance(result, And)
         assert isinstance(result.left, And)
@@ -181,15 +161,12 @@ class TestToNNF:
 class TestDistributeOrOverAnd:
     
     def test_variable_unchanged(self):
-        p = Variable("p")
-        result = distribute_or_over_and(p)
+        result = distribute_or_over_and(P)
         assert isinstance(result, Variable)
         assert result.name == "p"
     
     def test_simple_or(self):
-        p = Variable("p")
-        q = Variable("q")
-        or_formula = Or(p, q)
+        or_formula = Or(P, Q)
         result = distribute_or_over_and(or_formula)
         assert isinstance(result, Or)
         assert isinstance(result.left, Variable)
@@ -198,10 +175,7 @@ class TestDistributeOrOverAnd:
         assert result.right.name == "q"
     
     def test_distribute_or_over_and_right(self):
-        p = Variable("p")
-        q = Variable("q")
-        r = Variable("r")
-        formula = Or(p, And(q, r))
+        formula = Or(P, And(Q, R))
         result = distribute_or_over_and(formula)
         assert isinstance(result, And)
         assert isinstance(result.left, Or)
@@ -216,10 +190,7 @@ class TestDistributeOrOverAnd:
         assert result.right.right.name == "r"
     
     def test_distribute_or_over_and_left(self):
-        p = Variable("p")
-        q = Variable("q")
-        r = Variable("r")
-        formula = Or(And(p, q), r)
+        formula = Or(And(P, Q), R)
         result = distribute_or_over_and(formula)
         assert isinstance(result, And)
         assert isinstance(result.left, Or)
@@ -237,8 +208,7 @@ class TestDistributeOrOverAnd:
 class TestToCNF:
     
     def test_simple_variable(self):
-        p = Variable("p")
-        result = to_cnf(p)
+        result = to_cnf(P)
         assert isinstance(result, CNFFormula)
         assert len(result.clauses) == 1
         assert len(result.clauses[0].literals) == 1
@@ -246,9 +216,7 @@ class TestToCNF:
         assert result.clauses[0].literals[0].negated == False
     
     def test_simple_implication_to_cnf(self):
-        p = Variable("p")
-        q = Variable("q")
-        impl = Implies(p, q)
+        impl = Implies(P, Q)
         result = to_cnf(impl)
         assert isinstance(result, CNFFormula)
         assert len(result.clauses) == 1
@@ -258,10 +226,7 @@ class TestToCNF:
         assert literals[1].variable == "q" and literals[1].negated == False
     
     def test_complex_formula_to_cnf(self):
-        p = Variable("p")
-        q = Variable("q")
-        r = Variable("r")
-        formula = Or(p, And(q, r))
+        formula = Or(P, And(Q, R))
         result = to_cnf(formula)
         assert isinstance(result, CNFFormula)
         assert len(result.clauses) == 2
@@ -272,7 +237,7 @@ class TestToCNF:
 class TestFormulaToCnfFormat:
     
     def test_invalid_formula_type_error(self):
-        impl = Implies(Variable("p"), Variable("q"))
+        impl = Implies(P, Q)
         with pytest.raises(ValueError, match="Expected CNF formula, got"):
             formula_to_cnf_format(impl)
 
@@ -280,7 +245,7 @@ class TestFormulaToCnfFormat:
 class TestExtractLiteralsFromOr:
     
     def test_invalid_formula_type_error(self):
-        and_formula = And(Variable("p"), Variable("q"))
+        and_formula = And(P, Q)
         with pytest.raises(ValueError, match="Expected OR of literals, got"):
             extract_literals_from_or(and_formula)
 
@@ -288,6 +253,6 @@ class TestExtractLiteralsFromOr:
 class TestFormulaToLiteral:
     
     def test_invalid_formula_type_error(self):
-        and_formula = And(Variable("p"), Variable("q"))
+        and_formula = And(P, Q)
         with pytest.raises(ValueError, match="Cannot convert"):
             formula_to_literal(and_formula)

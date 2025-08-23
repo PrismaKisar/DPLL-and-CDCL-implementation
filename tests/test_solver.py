@@ -5,6 +5,14 @@ from src.solver import DPLLSolver, DecisionResult, Assignment, CDCLSolver, Impli
 from src.logic_ast import CNFFormula, Clause, Literal
 
 
+P = Literal("p", negated=False)
+P_NEG = Literal("p", negated=True)
+Q = Literal("q", negated=False)
+Q_NEG = Literal("q", negated=True)
+R = Literal("r", negated=False)
+R_NEG = Literal("r", negated=True)
+
+
 class TestDPLLSolver:
     
     def test_init(self):
@@ -15,9 +23,7 @@ class TestDPLLSolver:
         assert solver.decision_stack == []
     
     def test_evaluate_clause_satisfied(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=True)
-        clause = Clause([literal_p, literal_q])
+        clause = Clause([P, Q_NEG])
         cnf = CNFFormula([clause])
         solver = DPLLSolver(cnf)
         
@@ -26,9 +32,7 @@ class TestDPLLSolver:
         assert result is True
     
     def test_evaluate_clause_unsatisfied(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        clause = Clause([literal_p, literal_q])
+        clause = Clause([P, Q])
         cnf = CNFFormula([clause])
         solver = DPLLSolver(cnf)
         
@@ -38,9 +42,7 @@ class TestDPLLSolver:
         assert result is False
     
     def test_evaluate_clause_unassigned(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        clause = Clause([literal_p, literal_q])
+        clause = Clause([P, Q])
         cnf = CNFFormula([clause])
         solver = DPLLSolver(cnf)
         
@@ -48,9 +50,7 @@ class TestDPLLSolver:
         assert result is None
     
     def test_evaluate_clause_partial_assignment(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        clause = Clause([literal_p, literal_q])
+        clause = Clause([P, Q])
         cnf = CNFFormula([clause])
         solver = DPLLSolver(cnf)
         
@@ -59,8 +59,7 @@ class TestDPLLSolver:
         assert result is None
     
     def test_unit_propagation_success(self):
-        literal_p = Literal("p", negated=False)
-        clause = Clause([literal_p])
+        clause = Clause([P])
         cnf = CNFFormula([clause])
         solver = DPLLSolver(cnf)
         
@@ -69,10 +68,8 @@ class TestDPLLSolver:
         assert solver.assignment["p"] is True
     
     def test_unit_propagation_conflict(self):
-        literal_p_pos = Literal("p", negated=False)
-        literal_p_neg = Literal("p", negated=True)
-        clause1 = Clause([literal_p_pos])
-        clause2 = Clause([literal_p_neg])
+        clause1 = Clause([P])
+        clause2 = Clause([P_NEG])
         cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
         
@@ -80,12 +77,9 @@ class TestDPLLSolver:
         assert result == DecisionResult.UNSAT
     
     def test_unit_propagation_chain(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=True)
-        literal_r = Literal("r", negated=False)
-        clause1 = Clause([literal_p])
-        clause2 = Clause([literal_q])
-        clause3 = Clause([Literal("q", negated=False), literal_r])
+        clause1 = Clause([P])
+        clause2 = Clause([Q_NEG])
+        clause3 = Clause([Q, R])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = DPLLSolver(cnf)
         
@@ -96,9 +90,7 @@ class TestDPLLSolver:
         assert solver.assignment["r"] is True
     
     def test_choose_variable(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        clause = Clause([literal_p, literal_q])
+        clause = Clause([P, Q])
         cnf = CNFFormula([clause])
         solver = DPLLSolver(cnf)
         
@@ -136,10 +128,8 @@ class TestDPLLSolver:
         assert solver.decision_stack[0].value is False
     
     def test_all_clauses_satisfied(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        clause1 = Clause([literal_p])
-        clause2 = Clause([literal_q])
+        clause1 = Clause([P])
+        clause2 = Clause([Q])
         cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
         
@@ -152,10 +142,8 @@ class TestDPLLSolver:
         assert solver._all_clauses_satisfied() is True
     
     def test_simplify_formula_satisfied_clause_removal(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        clause1 = Clause([literal_p, literal_q])
-        clause2 = Clause([Literal("r", negated=False)])
+        clause1 = Clause([P, Q])
+        clause2 = Clause([R])
         cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
         
@@ -167,10 +155,7 @@ class TestDPLLSolver:
         assert solver.cnf.clauses[0].literals[0].variable == "r"
     
     def test_simplify_formula_false_literal_removal(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        literal_r = Literal("r", negated=False)
-        clause = Clause([literal_p, literal_q, literal_r])
+        clause = Clause([P, Q, R])
         cnf = CNFFormula([clause])
         solver = DPLLSolver(cnf)
         
@@ -184,8 +169,7 @@ class TestDPLLSolver:
         assert solver.cnf.clauses[0].literals[1].variable == "r"
     
     def test_simplify_formula_empty_clause(self):
-        literal_p = Literal("p", negated=False)
-        clause = Clause([literal_p])
+        clause = Clause([P])
         cnf = CNFFormula([clause])
         solver = DPLLSolver(cnf)
         
@@ -195,10 +179,7 @@ class TestDPLLSolver:
         assert result is False
     
     def test_unit_resolution_false_literal_removal(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)  
-        literal_r = Literal("r", negated=False)
-        clause = Clause([literal_p, literal_q, literal_r])
+        clause = Clause([P, Q, R])
         cnf = CNFFormula([clause])
         solver = DPLLSolver(cnf)
         
@@ -214,10 +195,7 @@ class TestDPLLSolver:
         assert "p" not in literals
     
     def test_unit_resolution_negated_literal_removal(self):
-        literal_p_neg = Literal("p", negated=True)
-        literal_q = Literal("q", negated=False)
-        literal_r = Literal("r", negated=False)
-        clause = Clause([literal_p_neg, literal_q, literal_r])
+        clause = Clause([P_NEG, Q, R])
         cnf = CNFFormula([clause])
         solver = DPLLSolver(cnf)
         
@@ -261,11 +239,8 @@ class TestDPLLSolver:
         assert solver.assignment["r"] is False
     
     def test_pure_literal_elimination_positive(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        literal_r = Literal("r", negated=True)
-        clause1 = Clause([literal_p, literal_q])
-        clause2 = Clause([literal_p, literal_r])
+        clause1 = Clause([P, Q])
+        clause2 = Clause([P, R_NEG])
         cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
         
@@ -274,12 +249,8 @@ class TestDPLLSolver:
         assert solver.assignment["p"] is True
     
     def test_pure_literal_elimination_negative(self):
-        literal_p = Literal("p", negated=False)
-        literal_q_neg1 = Literal("q", negated=True)
-        literal_q_neg2 = Literal("q", negated=True)
-        literal_r = Literal("r", negated=False)
-        clause1 = Clause([literal_p, literal_q_neg1])
-        clause2 = Clause([literal_q_neg2, literal_r])
+        clause1 = Clause([P, Q_NEG])
+        clause2 = Clause([Q_NEG, R])
         cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
         
@@ -288,11 +259,8 @@ class TestDPLLSolver:
         assert solver.assignment["q"] is False
     
     def test_pure_literal_elimination_mixed_polarity(self):
-        literal_p_pos = Literal("p", negated=False)
-        literal_p_neg = Literal("p", negated=True)
-        literal_q = Literal("q", negated=False)
-        clause1 = Clause([literal_p_pos, literal_q])
-        clause2 = Clause([literal_p_neg, literal_q])
+        clause1 = Clause([P, Q])
+        clause2 = Clause([P_NEG, Q])
         cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
         
@@ -302,10 +270,8 @@ class TestDPLLSolver:
         assert solver.assignment["q"] is True
     
     def test_pure_literal_elimination_already_satisfied(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        clause1 = Clause([literal_p])
-        clause2 = Clause([literal_q])
+        clause1 = Clause([P])
+        clause2 = Clause([Q])
         cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
         
@@ -315,8 +281,7 @@ class TestDPLLSolver:
         assert solver.assignment["q"] is True
     
     def test_solve_simple_sat(self):
-        literal_p = Literal("p", negated=False)
-        clause = Clause([literal_p])
+        clause = Clause([P])
         cnf = CNFFormula([clause])
         solver = DPLLSolver(cnf)
         
@@ -325,10 +290,8 @@ class TestDPLLSolver:
         assert solver.assignment["p"] is True
     
     def test_solve_simple_unsat(self):
-        literal_p_pos = Literal("p", negated=False)
-        literal_p_neg = Literal("p", negated=True)
-        clause1 = Clause([literal_p_pos])
-        clause2 = Clause([literal_p_neg])
+        clause1 = Clause([P])
+        clause2 = Clause([P_NEG])
         cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
         
@@ -343,10 +306,8 @@ class TestDPLLSolver:
         assert result == DecisionResult.SAT
     
     def test_solve_two_variables_sat(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        clause1 = Clause([literal_p, literal_q])
-        clause2 = Clause([Literal("p", negated=True), literal_q])
+        clause1 = Clause([P, Q])
+        clause2 = Clause([P_NEG, Q])
         cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
         
@@ -355,12 +316,9 @@ class TestDPLLSolver:
         assert solver.assignment["q"] is True
     
     def test_solve_horn_clause_sat(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        literal_r = Literal("r", negated=False)
-        clause1 = Clause([Literal("p", negated=True), literal_q])
-        clause2 = Clause([Literal("q", negated=True), literal_r])
-        clause3 = Clause([literal_p])
+        clause1 = Clause([P_NEG, Q])
+        clause2 = Clause([Q_NEG, R])
+        clause3 = Clause([P])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = DPLLSolver(cnf)
         
@@ -371,13 +329,10 @@ class TestDPLLSolver:
         assert solver.assignment["r"] is True
     
     def test_solve_requires_backtracking(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        literal_r = Literal("r", negated=False)
-        clause1 = Clause([literal_p, literal_q])
-        clause2 = Clause([literal_p, Literal("q", negated=True)])
-        clause3 = Clause([Literal("p", negated=True), literal_r])
-        clause4 = Clause([Literal("p", negated=True), Literal("r", negated=True)])
+        clause1 = Clause([P, Q])
+        clause2 = Clause([P, Q_NEG])
+        clause3 = Clause([P_NEG, R])
+        clause4 = Clause([P_NEG, R_NEG])
         cnf = CNFFormula([clause1, clause2, clause3, clause4])
         solver = DPLLSolver(cnf)
         
@@ -385,12 +340,9 @@ class TestDPLLSolver:
         assert result == DecisionResult.UNSAT
     
     def test_solve_three_sat_problem(self):
-        literal_x1 = Literal("x1", negated=False)
-        literal_x2 = Literal("x2", negated=False)
-        literal_x3 = Literal("x3", negated=False)
-        clause1 = Clause([literal_x1, literal_x2, literal_x3])
-        clause2 = Clause([Literal("x1", negated=True), Literal("x2", negated=True), literal_x3])
-        clause3 = Clause([literal_x1, Literal("x2", negated=True), Literal("x3", negated=True)])
+        clause1 = Clause([P, Q, R])
+        clause2 = Clause([P_NEG, Q_NEG, R])
+        clause3 = Clause([P, Q_NEG, R_NEG])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = DPLLSolver(cnf)
         
@@ -398,12 +350,9 @@ class TestDPLLSolver:
         assert result == DecisionResult.SAT
     
     def test_solve_pure_literal_elimination_case(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=True)
-        literal_r = Literal("r", negated=False)
-        clause1 = Clause([literal_p, literal_q])
-        clause2 = Clause([literal_p, literal_r])
-        clause3 = Clause([literal_q, literal_r])
+        clause1 = Clause([P, Q_NEG])
+        clause2 = Clause([P, R])
+        clause3 = Clause([Q_NEG, R])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = DPLLSolver(cnf)
         
@@ -414,31 +363,25 @@ class TestDPLLSolver:
         assert solver.assignment["r"] is True
     
     def test_solve_unit_propagation_chain(self):
-        literal_a = Literal("a", negated=False)
-        literal_b = Literal("b", negated=False)
-        literal_c = Literal("c", negated=False)
-        clause1 = Clause([literal_a])
-        clause2 = Clause([Literal("a", negated=True), literal_b])
-        clause3 = Clause([Literal("b", negated=True), literal_c])
+        clause1 = Clause([P])
+        clause2 = Clause([P_NEG, Q])
+        clause3 = Clause([Q_NEG, R])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = DPLLSolver(cnf)
         
         result = solver.solve()
         assert result == DecisionResult.SAT
-        assert solver.assignment["a"] is True
-        assert solver.assignment["b"] is True
-        assert solver.assignment["c"] is True
+        assert solver.assignment["p"] is True
+        assert solver.assignment["q"] is True
+        assert solver.assignment["r"] is True
     
     def test_solve_complex_unsat(self):
-        literal_x = Literal("x", negated=False)
-        literal_y = Literal("y", negated=False)
-        literal_z = Literal("z", negated=False)
-        clause1 = Clause([literal_x, literal_y])
-        clause2 = Clause([literal_x, Literal("y", negated=True)])
-        clause3 = Clause([Literal("x", negated=True), literal_y])
-        clause4 = Clause([Literal("x", negated=True), Literal("y", negated=True)])
-        clause5 = Clause([literal_z])
-        clause6 = Clause([Literal("z", negated=True)])
+        clause1 = Clause([P, Q])
+        clause2 = Clause([P, Q_NEG])
+        clause3 = Clause([P_NEG, Q])
+        clause4 = Clause([P_NEG, Q_NEG])
+        clause5 = Clause([R])
+        clause6 = Clause([R_NEG])
         cnf = CNFFormula([clause1, clause2, clause3, clause4, clause5, clause6])
         solver = DPLLSolver(cnf)
         
@@ -446,10 +389,8 @@ class TestDPLLSolver:
         assert result == DecisionResult.UNSAT
     
     def test_solve_all_variables_assigned(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        clause1 = Clause([literal_p])
-        clause2 = Clause([literal_q])
+        clause1 = Clause([P])
+        clause2 = Clause([Q])
         cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
         
@@ -500,7 +441,7 @@ class TestDPLLSolver:
         cnf = CNFFormula([])
         solver = DPLLSolver(cnf)
         
-        solver._make_decision("x", True)
+        solver._make_decision("p", True)
         
         call_count = 0
         original_method = solver._pure_literal_elimination
@@ -561,9 +502,7 @@ class TestCDCLSolver:
         assert node.antecedents == []
     
     def test_add_implication(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=True)
-        reason_clause = Clause([literal_p, literal_q])
+        reason_clause = Clause([P, Q_NEG])
         cnf = CNFFormula([reason_clause])
         solver = CDCLSolver(cnf)
         
@@ -587,12 +526,8 @@ class TestCDCLSolver:
         assert "q" in node.antecedents
     
     def test_choose_variable_with_learned_clauses(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        literal_r = Literal("r", negated=False)
-        
-        original_clause = Clause([literal_p])
-        learned_clause = Clause([literal_q, literal_r])
+        original_clause = Clause([P])
+        learned_clause = Clause([Q, R])
         
         cnf = CNFFormula([original_clause])
         solver = CDCLSolver(cnf)
@@ -611,11 +546,8 @@ class TestCDCLSolver:
         assert var is None
     
     def test_all_clauses_satisfied_with_learned_clauses(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        
-        original_clause = Clause([literal_p])
-        learned_clause = Clause([literal_q])
+        original_clause = Clause([P])
+        learned_clause = Clause([Q])
         
         cnf = CNFFormula([original_clause])
         solver = CDCLSolver(cnf)
@@ -630,20 +562,19 @@ class TestCDCLSolver:
         assert solver._all_clauses_satisfied() is True
     
     def test_implication_node_creation(self):
-        node = ImplicationNode("x", True, 2, None, ["y", "z"])
-        assert node.variable == "x"
+        node = ImplicationNode("p", True, 2, None, ["q", "r"])
+        assert node.variable == "p"
         assert node.value is True
         assert node.decision_level == 2
         assert node.reason is None
-        assert node.antecedents == ["y", "z"]
+        assert node.antecedents == ["q", "r"]
     
     def test_implication_node_default_antecedents(self):
-        node = ImplicationNode("x", False, 1)
+        node = ImplicationNode("p", False, 1)
         assert node.antecedents == []
     
     def test_assignment_with_reason(self):
-        literal = Literal("p", negated=False)
-        reason_clause = Clause([literal])
+        reason_clause = Clause([P])
         assignment = Assignment("p", True, 1, reason_clause)
         
         assert assignment.variable == "p"
@@ -665,8 +596,7 @@ class TestCDCLSolver:
         assert solver.implication_graph["q"].decision_level == 2
     
     def test_unit_propagation_no_conflict(self):
-        literal_p = Literal("p", negated=False)
-        clause = Clause([literal_p])
+        clause = Clause([P])
         cnf = CNFFormula([clause])
         solver = CDCLSolver(cnf)
         
@@ -677,10 +607,8 @@ class TestCDCLSolver:
         assert solver.implication_graph["p"].reason == clause
     
     def test_unit_propagation_with_conflict(self):
-        literal_p_pos = Literal("p", negated=False)
-        literal_p_neg = Literal("p", negated=True)
-        clause1 = Clause([literal_p_pos])
-        clause2 = Clause([literal_p_neg])
+        clause1 = Clause([P])
+        clause2 = Clause([P_NEG])
         cnf = CNFFormula([clause1, clause2])
         solver = CDCLSolver(cnf)
         
@@ -689,12 +617,9 @@ class TestCDCLSolver:
         assert solver.assignment["p"] is True
     
     def test_unit_propagation_chain(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        literal_r = Literal("r", negated=False)
-        clause1 = Clause([literal_p])
-        clause2 = Clause([Literal("p", negated=True), literal_q])
-        clause3 = Clause([Literal("q", negated=True), literal_r])
+        clause1 = Clause([P])
+        clause2 = Clause([P_NEG, Q])
+        clause3 = Clause([Q_NEG, R])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = CDCLSolver(cnf)
         
@@ -711,10 +636,8 @@ class TestCDCLSolver:
         assert "q" in solver.implication_graph["r"].antecedents
     
     def test_unit_propagation_with_learned_clauses(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        original_clause = Clause([literal_p])
-        learned_clause = Clause([Literal("p", negated=True), literal_q])
+        original_clause = Clause([P])
+        learned_clause = Clause([P_NEG, Q])
         
         cnf = CNFFormula([original_clause])
         solver = CDCLSolver(cnf)
@@ -727,9 +650,7 @@ class TestCDCLSolver:
         assert solver.implication_graph["q"].reason == learned_clause
     
     def test_evaluate_clause_satisfied(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=True)
-        clause = Clause([literal_p, literal_q])
+        clause = Clause([P, Q_NEG])
         cnf = CNFFormula([clause])
         solver = CDCLSolver(cnf)
         
@@ -738,9 +659,7 @@ class TestCDCLSolver:
         assert result is True
     
     def test_evaluate_clause_unsatisfied(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        clause = Clause([literal_p, literal_q])
+        clause = Clause([P, Q])
         cnf = CNFFormula([clause])
         solver = CDCLSolver(cnf)
         
@@ -750,9 +669,7 @@ class TestCDCLSolver:
         assert result is False
     
     def test_evaluate_clause_unassigned(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        clause = Clause([literal_p, literal_q])
+        clause = Clause([P, Q])
         cnf = CNFFormula([clause])
         solver = CDCLSolver(cnf)
         
@@ -760,9 +677,7 @@ class TestCDCLSolver:
         assert result is None
     
     def test_evaluate_clause_partial_assignment(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        clause = Clause([literal_p, literal_q])
+        clause = Clause([P, Q])
         cnf = CNFFormula([clause])
         solver = CDCLSolver(cnf)
         
@@ -827,9 +742,7 @@ class TestCDCLSolver:
         assert len(solver.implication_graph) == 0
     
     def test_backtrack_to_level_with_implications(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        reason_clause = Clause([literal_p, literal_q])
+        reason_clause = Clause([P, Q])
         cnf = CNFFormula([reason_clause])
         solver = CDCLSolver(cnf)
         
@@ -864,18 +777,16 @@ class TestCDCLSolver:
         assert solver.assignment == initial_assignments
     
     def test_backtrack_to_level_mixed_assignments_same_level(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        reason1 = Clause([literal_p])
-        reason2 = Clause([literal_q])
+        reason1 = Clause([P])
+        reason2 = Clause([Q])
         
         cnf = CNFFormula([])
         solver = CDCLSolver(cnf)
         
-        solver._make_decision("x", True)
+        solver._make_decision("s", True)
         solver._add_implication("p", True, reason1)
         solver._add_implication("q", False, reason2)
-        solver._make_decision("y", False)
+        solver._make_decision("t", False)
         
         assert solver.decision_level == 2
         assert len(solver.assignment) == 4
@@ -883,16 +794,15 @@ class TestCDCLSolver:
         solver._backtrack_to_level(1)
         
         assert solver.decision_level == 1
-        assert solver.assignment["x"] is True
+        assert solver.assignment["s"] is True
         assert solver.assignment["p"] is True
         assert solver.assignment["q"] is False
-        assert "y" not in solver.assignment
+        assert "t" not in solver.assignment
         assert len(solver.decision_stack) == 3
         assert len(solver.implication_graph) == 3
     
     def test_solve_simple_sat(self):
-        literal_p = Literal("p", negated=False)
-        clause = Clause([literal_p])
+        clause = Clause([P])
         cnf = CNFFormula([clause])
         solver = CDCLSolver(cnf)
         
@@ -901,10 +811,8 @@ class TestCDCLSolver:
         assert solver.assignment["p"] is True
     
     def test_solve_simple_unsat(self):
-        literal_p_pos = Literal("p", negated=False)
-        literal_p_neg = Literal("p", negated=True)
-        clause1 = Clause([literal_p_pos])
-        clause2 = Clause([literal_p_neg])
+        clause1 = Clause([P])
+        clause2 = Clause([P_NEG])
         cnf = CNFFormula([clause1, clause2])
         solver = CDCLSolver(cnf)
         
@@ -919,10 +827,8 @@ class TestCDCLSolver:
         assert result == DecisionResult.SAT
     
     def test_solve_with_unit_propagation(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        clause1 = Clause([literal_p])
-        clause2 = Clause([Literal("p", negated=True), literal_q])
+        clause1 = Clause([P])
+        clause2 = Clause([P_NEG, Q])
         cnf = CNFFormula([clause1, clause2])
         solver = CDCLSolver(cnf)
         
@@ -932,9 +838,7 @@ class TestCDCLSolver:
         assert solver.assignment["q"] is True
     
     def test_solve_with_decision_making(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        clause = Clause([literal_p, literal_q])
+        clause = Clause([P, Q])
         cnf = CNFFormula([clause])
         solver = CDCLSolver(cnf)
         
@@ -943,11 +847,9 @@ class TestCDCLSolver:
         assert (solver.assignment.get("p", False) is True or solver.assignment.get("q", False) is True)
     
     def test_solve_with_conflict_and_learning(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        clause1 = Clause([literal_p, literal_q])
-        clause2 = Clause([Literal("p", negated=True)])
-        clause3 = Clause([Literal("q", negated=True)])
+        clause1 = Clause([P, Q])
+        clause2 = Clause([P_NEG])
+        clause3 = Clause([Q_NEG])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = CDCLSolver(cnf)
         
@@ -956,12 +858,9 @@ class TestCDCLSolver:
         assert len(solver.learned_clauses) > 0
     
     def test_solve_horn_clauses(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        literal_r = Literal("r", negated=False)
-        clause1 = Clause([Literal("p", negated=True), literal_q])
-        clause2 = Clause([Literal("q", negated=True), literal_r])
-        clause3 = Clause([literal_p])
+        clause1 = Clause([P_NEG, Q])
+        clause2 = Clause([Q_NEG, R])
+        clause3 = Clause([P])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = CDCLSolver(cnf)
         
@@ -972,11 +871,8 @@ class TestCDCLSolver:
         assert solver.assignment["r"] is True
     
     def test_solve_multiple_decisions(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        literal_r = Literal("r", negated=False)
-        clause1 = Clause([literal_p, literal_q])
-        clause2 = Clause([literal_r])
+        clause1 = Clause([P, Q])
+        clause2 = Clause([R])
         cnf = CNFFormula([clause1, clause2])
         solver = CDCLSolver(cnf)
         
@@ -986,16 +882,12 @@ class TestCDCLSolver:
         assert (solver.assignment.get("p", False) is True or solver.assignment.get("q", False) is True)
     
     def test_solve_with_learned_clauses_consideration(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        literal_r = Literal("r", negated=False)
-        
-        clause1 = Clause([literal_p])
-        clause2 = Clause([literal_q])
+        clause1 = Clause([P])
+        clause2 = Clause([Q])
         cnf = CNFFormula([clause1, clause2])
         solver = CDCLSolver(cnf)
         
-        learned_clause = Clause([literal_r])
+        learned_clause = Clause([R])
         solver.learned_clauses.append(learned_clause)
         
         result = solver.solve()
@@ -1005,9 +897,8 @@ class TestCDCLSolver:
         assert solver.assignment["r"] is True
     
     def test_solve_conflict_at_decision_level_zero(self):
-        literal_p = Literal("p", negated=False)
-        clause1 = Clause([literal_p])
-        clause2 = Clause([Literal("p", negated=True)])
+        clause1 = Clause([P])
+        clause2 = Clause([P_NEG])
         cnf = CNFFormula([clause1, clause2])
         solver = CDCLSolver(cnf)
         
@@ -1015,10 +906,8 @@ class TestCDCLSolver:
         assert result == DecisionResult.UNSAT
     
     def test_solve_all_variables_assigned_early(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        clause1 = Clause([literal_p])
-        clause2 = Clause([literal_q])
+        clause1 = Clause([P])
+        clause2 = Clause([Q])
         cnf = CNFFormula([clause1, clause2])
         solver = CDCLSolver(cnf)
         
@@ -1036,39 +925,28 @@ class TestCDCLSolver:
         assert len(solver.assignment) == 0
     
     def test_solve_complex_satisfiable(self):
-        literal_a = Literal("a", negated=False)
-        literal_b = Literal("b", negated=False)
-        literal_c = Literal("c", negated=False)
-        
-        clause1 = Clause([literal_a, literal_b])
-        clause2 = Clause([Literal("a", negated=True), literal_c])
-        clause3 = Clause([Literal("b", negated=True), literal_c])
+        clause1 = Clause([P, Q])
+        clause2 = Clause([P_NEG, R])
+        clause3 = Clause([Q_NEG, R])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = CDCLSolver(cnf)
         
         result = solver.solve()
         assert result == DecisionResult.SAT
         
-        # Check that the assignment satisfies the formula
-        # The solver might not assign all variables if they're not needed
-        if "a" in solver.assignment and "b" in solver.assignment:
-            if solver.assignment["a"] and solver.assignment["b"]:
+        if "p" in solver.assignment and "q" in solver.assignment:
+            if solver.assignment["p"] and solver.assignment["q"]:
                 assert True
             else:
-                assert solver.assignment["c"] is True
+                assert solver.assignment["r"] is True
         else:
-            # If not all variables are assigned, c must be true to satisfy all clauses
-            assert solver.assignment.get("c", False) is True
+            assert solver.assignment.get("r", False) is True
     
     def test_solve_with_backtracking_scenario(self):
-        literal_x = Literal("x", negated=False)
-        literal_y = Literal("y", negated=False)
-        literal_z = Literal("z", negated=False)
-        
-        clause1 = Clause([literal_x, literal_y])
-        clause2 = Clause([literal_x, Literal("y", negated=True)])
-        clause3 = Clause([Literal("x", negated=True), literal_z])
-        clause4 = Clause([Literal("z", negated=True)])
+        clause1 = Clause([P, Q])
+        clause2 = Clause([P, Q_NEG])
+        clause3 = Clause([P_NEG, R])
+        clause4 = Clause([R_NEG])
         cnf = CNFFormula([clause1, clause2, clause3, clause4])
         solver = CDCLSolver(cnf)
         
@@ -1076,19 +954,16 @@ class TestCDCLSolver:
         assert result == DecisionResult.UNSAT
     
     def test_backjump_method(self):
-        literal_p = Literal("p", negated=False)
-        clause = Clause([literal_p])
+        clause = Clause([P])
         cnf = CNFFormula([clause])
         solver = CDCLSolver(cnf)
         
-        learned_clause = Clause([literal_p])
+        learned_clause = Clause([P])
         level = solver._backjump(learned_clause)
         assert level == 0
     
     def test_backjump_scenario_calls_backtrack(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        clause1 = Clause([literal_p, literal_q])
+        clause1 = Clause([P, Q])
         cnf = CNFFormula([clause1])
         
         class BackjumpTestSolver(CDCLSolver):
@@ -1099,7 +974,8 @@ class TestCDCLSolver:
             def _unit_propagation(self):
                 if self.decision_level > 0 and not self.conflict_forced:
                     self.conflict_forced = True
-                    return Clause([Literal("fake_conflict", negated=True)])
+                    fake_literal = Literal("fake_conflict", negated=True)
+                    return Clause([fake_literal])
                 return super()._unit_propagation()
                 
         test_solver = BackjumpTestSolver(cnf)
@@ -1108,8 +984,7 @@ class TestCDCLSolver:
         assert len(test_solver.learned_clauses) > 0 or not test_solver.conflict_forced
     
     def test_choose_variable_returns_none_scenario(self):
-        literal_p = Literal("p", negated=False)
-        clause = Clause([literal_p])
+        clause = Clause([P])
         cnf = CNFFormula([clause])
         solver = CDCLSolver(cnf)
         
@@ -1139,13 +1014,9 @@ class TestCDCLSolver:
         assert result == DecisionResult.SAT
     
     def test_analyze_conflict_1uip(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        literal_r = Literal("r", negated=False)
-        
-        clause1 = Clause([literal_p, literal_q])
-        clause2 = Clause([Literal("p", negated=True), literal_r])
-        clause3 = Clause([Literal("q", negated=True), Literal("r", negated=True)])
+        clause1 = Clause([P, Q])
+        clause2 = Clause([P_NEG, R])
+        clause3 = Clause([Q_NEG, R_NEG])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = CDCLSolver(cnf)
         
@@ -1159,8 +1030,7 @@ class TestCDCLSolver:
         assert len(learned.literals) >= 1
         
     def test_analyze_conflict_decision_level_zero(self):
-        literal_p = Literal("p", negated=False)
-        conflict_clause = Clause([literal_p])
+        conflict_clause = Clause([P])
         cnf = CNFFormula([])
         solver = CDCLSolver(cnf)
         
@@ -1168,8 +1038,7 @@ class TestCDCLSolver:
         assert result == conflict_clause
         
     def test_backjump_single_literal(self):
-        literal_p = Literal("p", negated=False)
-        learned_clause = Clause([literal_p])
+        learned_clause = Clause([P])
         cnf = CNFFormula([])
         solver = CDCLSolver(cnf)
         
@@ -1177,11 +1046,7 @@ class TestCDCLSolver:
         assert level == 0
         
     def test_backjump_multiple_levels(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        literal_r = Literal("r", negated=False)
-        
-        learned_clause = Clause([literal_p, literal_q, literal_r])
+        learned_clause = Clause([P, Q, R])
         cnf = CNFFormula([])
         solver = CDCLSolver(cnf)
         
@@ -1193,26 +1058,20 @@ class TestCDCLSolver:
         assert level == 2
         
     def test_backjump_with_implications(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        
-        reason = Clause([literal_p])
-        learned_clause = Clause([literal_p, literal_q])
+        reason = Clause([P])
+        learned_clause = Clause([P, R])
         cnf = CNFFormula([])
         solver = CDCLSolver(cnf)
         
         solver._make_decision("p", True)
-        solver._make_decision("x", True)
-        solver._add_implication("q", True, reason)
+        solver._make_decision("q", True)
+        solver._add_implication("r", True, reason)
         
         level = solver._backjump(learned_clause)
         assert level == 1
     
     def test_analyze_conflict_edge_cases(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        
-        conflict_clause = Clause([literal_p, literal_q])
+        conflict_clause = Clause([P, Q])
         cnf = CNFFormula([])
         solver = CDCLSolver(cnf)
         solver.decision_level = 1
@@ -1223,18 +1082,14 @@ class TestCDCLSolver:
         solver._make_decision("p", True)
         solver._make_decision("q", True)
         
-        reason_p = Clause([Literal("p", negated=True), literal_q])
+        reason_p = Clause([P_NEG, Q])
         solver.implication_graph["p"].reason = reason_p
         
         result = solver._analyze_conflict(conflict_clause)
         assert len(result.literals) >= 1
         
     def test_backjump_with_same_levels(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        literal_r = Literal("r", negated=False)
-        
-        learned_clause = Clause([literal_p, literal_q, literal_r])
+        learned_clause = Clause([P, Q, R])
         cnf = CNFFormula([])
         solver = CDCLSolver(cnf)
         
@@ -1247,10 +1102,6 @@ class TestCDCLSolver:
         assert level == 1
     
     def test_analyze_conflict_recursive_case(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        literal_r = Literal("r", negated=False)
-        
         cnf = CNFFormula([])
         solver = CDCLSolver(cnf)
         
@@ -1258,31 +1109,28 @@ class TestCDCLSolver:
         solver._make_decision("q", True) 
         solver._make_decision("r", True)
         
-        reason_p = Clause([Literal("p", negated=True), literal_q, literal_r])
-        reason_q = Clause([Literal("q", negated=True), literal_r])
+        reason_p = Clause([P_NEG, Q, R])
+        reason_q = Clause([Q_NEG, R])
         
         solver.implication_graph["p"].reason = reason_p
         solver.implication_graph["q"].reason = reason_q
         
-        conflict_clause = Clause([Literal("p", negated=True), Literal("q", negated=True)])
+        conflict_clause = Clause([P_NEG, Q_NEG])
         
         result = solver._analyze_conflict(conflict_clause)
         assert len(result.literals) >= 1
         
     def test_analyze_conflict_duplicate_literals(self):
-        literal_p = Literal("p", negated=False)
-        literal_q = Literal("q", negated=False)
-        
         cnf = CNFFormula([])
         solver = CDCLSolver(cnf)
         
         solver._make_decision("p", True)
         solver._make_decision("q", True)
         
-        reason_p = Clause([literal_p, literal_q])
+        reason_p = Clause([P, Q])
         solver.implication_graph["p"].reason = reason_p
         
-        conflict_clause = Clause([literal_p, literal_q])
+        conflict_clause = Clause([P, Q])
         
         result = solver._analyze_conflict(conflict_clause)
         assert len(result.literals) >= 1

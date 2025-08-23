@@ -12,29 +12,6 @@ Q_NEG = Literal("q", negated=True)
 R = Literal("r", negated=False)
 R_NEG = Literal("r", negated=True)
 
-A = Literal("a", negated=False)
-A_NEG = Literal("a", negated=True)
-B = Literal("b", negated=False)
-B_NEG = Literal("b", negated=True)
-C = Literal("c", negated=False)
-C_NEG = Literal("c", negated=True)
-
-X = Literal("x", negated=False)
-X_NEG = Literal("x", negated=True)
-Y = Literal("y", negated=False)
-Y_NEG = Literal("y", negated=True)
-Z = Literal("z", negated=False)
-Z_NEG = Literal("z", negated=True)
-
-X1 = Literal("x1", negated=False)
-X1_NEG = Literal("x1", negated=True)
-X2 = Literal("x2", negated=False)
-X2_NEG = Literal("x2", negated=True)
-X3 = Literal("x3", negated=False)
-X3_NEG = Literal("x3", negated=True)
-
-S = Literal("s", negated=False)
-
 
 class TestDPLLSolver:
     
@@ -363,9 +340,9 @@ class TestDPLLSolver:
         assert result == DecisionResult.UNSAT
     
     def test_solve_three_sat_problem(self):
-        clause1 = Clause([X1, X2, X3])
-        clause2 = Clause([X1_NEG, X2_NEG, X3])
-        clause3 = Clause([X1, X2_NEG, X3_NEG])
+        clause1 = Clause([P, Q, R])
+        clause2 = Clause([P_NEG, Q_NEG, R])
+        clause3 = Clause([P, Q_NEG, R_NEG])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = DPLLSolver(cnf)
         
@@ -386,25 +363,25 @@ class TestDPLLSolver:
         assert solver.assignment["r"] is True
     
     def test_solve_unit_propagation_chain(self):
-        clause1 = Clause([A])
-        clause2 = Clause([A_NEG, B])
-        clause3 = Clause([B_NEG, C])
+        clause1 = Clause([P])
+        clause2 = Clause([P_NEG, Q])
+        clause3 = Clause([Q_NEG, R])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = DPLLSolver(cnf)
         
         result = solver.solve()
         assert result == DecisionResult.SAT
-        assert solver.assignment["a"] is True
-        assert solver.assignment["b"] is True
-        assert solver.assignment["c"] is True
+        assert solver.assignment["p"] is True
+        assert solver.assignment["q"] is True
+        assert solver.assignment["r"] is True
     
     def test_solve_complex_unsat(self):
-        clause1 = Clause([X, Y])
-        clause2 = Clause([X, Y_NEG])
-        clause3 = Clause([X_NEG, Y])
-        clause4 = Clause([X_NEG, Y_NEG])
-        clause5 = Clause([Z])
-        clause6 = Clause([Z_NEG])
+        clause1 = Clause([P, Q])
+        clause2 = Clause([P, Q_NEG])
+        clause3 = Clause([P_NEG, Q])
+        clause4 = Clause([P_NEG, Q_NEG])
+        clause5 = Clause([R])
+        clause6 = Clause([R_NEG])
         cnf = CNFFormula([clause1, clause2, clause3, clause4, clause5, clause6])
         solver = DPLLSolver(cnf)
         
@@ -464,7 +441,7 @@ class TestDPLLSolver:
         cnf = CNFFormula([])
         solver = DPLLSolver(cnf)
         
-        solver._make_decision("x", True)
+        solver._make_decision("p", True)
         
         call_count = 0
         original_method = solver._pure_literal_elimination
@@ -585,15 +562,15 @@ class TestCDCLSolver:
         assert solver._all_clauses_satisfied() is True
     
     def test_implication_node_creation(self):
-        node = ImplicationNode("x", True, 2, None, ["y", "z"])
-        assert node.variable == "x"
+        node = ImplicationNode("p", True, 2, None, ["q", "r"])
+        assert node.variable == "p"
         assert node.value is True
         assert node.decision_level == 2
         assert node.reason is None
-        assert node.antecedents == ["y", "z"]
+        assert node.antecedents == ["q", "r"]
     
     def test_implication_node_default_antecedents(self):
-        node = ImplicationNode("x", False, 1)
+        node = ImplicationNode("p", False, 1)
         assert node.antecedents == []
     
     def test_assignment_with_reason(self):
@@ -806,10 +783,10 @@ class TestCDCLSolver:
         cnf = CNFFormula([])
         solver = CDCLSolver(cnf)
         
-        solver._make_decision("x", True)
+        solver._make_decision("s", True)
         solver._add_implication("p", True, reason1)
         solver._add_implication("q", False, reason2)
-        solver._make_decision("y", False)
+        solver._make_decision("t", False)
         
         assert solver.decision_level == 2
         assert len(solver.assignment) == 4
@@ -817,10 +794,10 @@ class TestCDCLSolver:
         solver._backtrack_to_level(1)
         
         assert solver.decision_level == 1
-        assert solver.assignment["x"] is True
+        assert solver.assignment["s"] is True
         assert solver.assignment["p"] is True
         assert solver.assignment["q"] is False
-        assert "y" not in solver.assignment
+        assert "t" not in solver.assignment
         assert len(solver.decision_stack) == 3
         assert len(solver.implication_graph) == 3
     
@@ -948,31 +925,28 @@ class TestCDCLSolver:
         assert len(solver.assignment) == 0
     
     def test_solve_complex_satisfiable(self):
-        clause1 = Clause([A, B])
-        clause2 = Clause([A_NEG, C])
-        clause3 = Clause([B_NEG, C])
+        clause1 = Clause([P, Q])
+        clause2 = Clause([P_NEG, R])
+        clause3 = Clause([Q_NEG, R])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = CDCLSolver(cnf)
         
         result = solver.solve()
         assert result == DecisionResult.SAT
         
-        # Check that the assignment satisfies the formula
-        # The solver might not assign all variables if they're not needed
-        if "a" in solver.assignment and "b" in solver.assignment:
-            if solver.assignment["a"] and solver.assignment["b"]:
+        if "p" in solver.assignment and "q" in solver.assignment:
+            if solver.assignment["p"] and solver.assignment["q"]:
                 assert True
             else:
-                assert solver.assignment["c"] is True
+                assert solver.assignment["r"] is True
         else:
-            # If not all variables are assigned, c must be true to satisfy all clauses
-            assert solver.assignment.get("c", False) is True
+            assert solver.assignment.get("r", False) is True
     
     def test_solve_with_backtracking_scenario(self):
-        clause1 = Clause([X, Y])
-        clause2 = Clause([X, Y_NEG])
-        clause3 = Clause([X_NEG, Z])
-        clause4 = Clause([Z_NEG])
+        clause1 = Clause([P, Q])
+        clause2 = Clause([P, Q_NEG])
+        clause3 = Clause([P_NEG, R])
+        clause4 = Clause([R_NEG])
         cnf = CNFFormula([clause1, clause2, clause3, clause4])
         solver = CDCLSolver(cnf)
         
@@ -1085,13 +1059,13 @@ class TestCDCLSolver:
         
     def test_backjump_with_implications(self):
         reason = Clause([P])
-        learned_clause = Clause([P, Q])
+        learned_clause = Clause([P, R])
         cnf = CNFFormula([])
         solver = CDCLSolver(cnf)
         
         solver._make_decision("p", True)
-        solver._make_decision("x", True)
-        solver._add_implication("q", True, reason)
+        solver._make_decision("q", True)
+        solver._add_implication("r", True, reason)
         
         level = solver._backjump(learned_clause)
         assert level == 1

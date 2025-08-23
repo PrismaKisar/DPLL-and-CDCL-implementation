@@ -163,3 +163,33 @@ class DPLLSolver:
                 return DecisionResult.SAT
             
             self._make_decision(variable, True)
+
+
+class CDCLSolver:
+    def __init__(self, cnf_formula: CNFFormula):
+        self.cnf = cnf_formula
+        self.assignment: Dict[str, bool] = {}
+        self.decision_stack: List[Assignment] = []
+        self.learned_clauses: List[Clause] = []
+        self.decision_level = 0
+        
+    def _unit_propagation(self) -> Optional[Clause]:
+        pass
+    
+    def _analyze_conflict(self, conflict_clause: Clause) -> Clause:
+        pass
+    
+    def _backjump(self, learned_clause: Clause) -> int:
+        pass
+    
+    def _choose_variable(self) -> Optional[str]:
+        pass
+    
+    def _make_decision(self, variable: str, value: bool):
+        pass
+    
+    def _all_clauses_satisfied(self) -> bool:
+        pass
+    
+    def solve(self) -> DecisionResult:
+        pass

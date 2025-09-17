@@ -9,6 +9,9 @@ from src.solver import DPLLSolver, CDCLSolver, DecisionResult
 from src.dimacs_parser import parse_dimacs_file
 import tempfile
 import time
+import threading
+import requests
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -129,7 +132,26 @@ def solve_dimacs():
     except Exception as e:
         return jsonify({'error': f'Error processing DIMACS file: {str(e)}'})
 
+@app.route('/keep-alive')
+def keep_alive():
+    return jsonify({'status': 'alive', 'timestamp': datetime.now().isoformat()})
+
+def ping_self():
+    url = os.environ.get('RENDER_EXTERNAL_URL', 'https://dpll-and-cdcl-implementation.onrender.com') + '/keep-alive'
+    while True:
+        try:
+            time.sleep(600)
+            requests.get(url, timeout=10)
+            print(f"Keep-alive ping sent at {datetime.now()}")
+        except Exception as e:
+            print(f"Keep-alive ping failed: {e}")
+
 if __name__ == '__main__':
     import os
     port = int(os.environ.get('PORT', 5000))
+
+    if os.environ.get('RENDER_EXTERNAL_URL'):
+        ping_thread = threading.Thread(target=ping_self, daemon=True)
+        ping_thread.start()
+
     app.run(host='0.0.0.0', port=port, debug=False)

@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAT Solver</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+
+
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            box-sizing: border-box;
+        }
+
+        input[type="text"]:focus {
+            border-color: #00bcd4;
+            outline: none;
+        }
+
+        button {
+            background-color: #00bcd4;
+            color: white;
+            padding: 12px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        button:hover {
+            background-color: #00acc1;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 20px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .error {
+            background-color: #ffebee;
+            border-left-color: #f44336;
+            color: #c62828;
+        }
+
+        .formula-display {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 15px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+        }
+
+        .formula-section {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 15px;
+            margin: 8px 0;
+        }
+
+        .formula-label {
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 8px;
+        }
+
+        .solver-result {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: white;
+            border-radius: 15px;
+        }
+
+        .sat {
+            color: #2e7d32;
+            font-weight: bold;
+        }
+
+        .unsat {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+
+        .assignment {
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            background-color: #e8f5e8;
+            padding: 12px;
+            border-radius: 15px;
+        }
+
+        .examples {
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .examples-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .example {
+            background-color: #f1f3f4;
+            border: 1px solid #e0e0e0;
+            border-radius: 20px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #5f6368;
+            transition: all 0.2s ease;
+        }
+
+        .example:hover {
+            background-color: #e8f0fe;
+            border-color: #00bcd4;
+            color: #333;
+        }
+
+        .file-upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 25px;
+            padding: 12px;
+            text-align: center;
+            background-color: #fafafa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+
+        .file-upload-area:hover {
+            border-color: #00bcd4;
+            background-color: #f0f9ff;
+        }
+
+        .file-upload-area.dragover {
+            border-color: #00bcd4;
+            background-color: #e0f2fe;
+        }
+
+        .file-upload-text {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .file-upload-selected {
+            color: #00bcd4;
+            font-weight: bold;
+            margin-top: 8px;
+        }
+
+        .hidden-file-input {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>SAT Solver</h1>
+
+    <div class="input-section">
+        <label for="formula">Enter a logical formula:</label>
+        <div class="input-row">
+            <input type="text" id="formula" placeholder="e.g., (p and q) -> (not r or s)">
+            <button onclick="solveFormula()" id="solveBtn">Solve</button>
+        </div>
+    </div>
+
+    <div class="input-section">
+        <label for="dimacsFile">Or upload a DIMACS file:</label>
+        <div class="input-row">
+            <div class="file-upload-area" onclick="document.getElementById('dimacsFile').click()"
+                 ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+                <input type="file" id="dimacsFile" accept=".cnf,.dimacs" class="hidden-file-input">
+                <div class="file-upload-text">Click to select or drag and drop a DIMACS file</div>
+                <div id="file-upload-selected" class="file-upload-selected" style="display: none;"></div>
+            </div>
+            <button onclick="solveDimacs()" id="dimacsBtn">Solve File</button>
+        </div>
+    </div>
+
+    <div class="examples">
+        <strong>Example formulas:</strong>
+        <div class="examples-grid">
+            <div class="example" onclick="setFormula('p and q')">p and q</div>
+            <div class="example" onclick="setFormula('p -> q')">p -> q</div>
+            <div class="example" onclick="setFormula('p or q')">p or q</div>
+            <div class="example" onclick="setFormula('not p')">not p</div>
+            <div class="example" onclick="setFormula('p <-> q')">p <-> q</div>
+            <div class="example" onclick="setFormula('(p or q) and (not p or r)')">(p or q) and (not p or r)</div>
+            <div class="example" onclick="setFormula('p <-> (q and r)')">p <-> (q and r)</div>
+            <div class="example" onclick="setFormula('(p -> q) and (q -> r) and p and not r')">(p -> q) and (q -> r) and p and not r</div>
+            <div class="example" onclick="setFormula('(p and q) or (r and s)')">(p and q) or (r and s)</div>
+            <div class="example" onclick="setFormula('not (p or q)')">not (p or q)</div>
+            <div class="example" onclick="setFormula('p and not p')">p and not p</div>
+            <div class="example" onclick="setFormula('(p -> q) <-> (not q -> not p)')">(p -> q) <-> (not q -> not p)</div>
+            <div class="example" onclick="setFormula('(a or b) and (c or d) and (e or f)')">(a or b) and (c or d) and (e or f)</div>
+            <div class="example" onclick="setFormula('(x and y) or (z and w) or (u and v)')">(x and y) or (z and w) or (u and v)</div>
+        </div>
+    </div>
+
+    <div id="results" style="display: none;"></div>
+
+    <script>
+        function setFormula(formula) {
+            document.getElementById('formula').value = formula;
+        }
+
+        function solveFormula() {
+            const formula = document.getElementById('formula').value.trim();
+            const button = document.getElementById('solveBtn');
+            const results = document.getElementById('results');
+
+            if (!formula) {
+                showError('Please enter a formula');
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = 'Solving...';
+
+            fetch('/solve', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ formula: formula })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showError(data.error);
+                    } else {
+                        showResults(data);
+                    }
+                })
+                .catch(error => {
+                    showError('Network error: ' + error.message);
+                })
+                .finally(() => {
+                    button.disabled = false;
+                    button.textContent = 'Solve';
+                });
+        }
+
+        function showError(message) {
+            const results = document.getElementById('results');
+            results.innerHTML = `<div class="error"><strong>Error:</strong> ${message}</div>`;
+            results.style.display = 'block';
+        }
+
+        function showResults(data) {
+            const results = document.getElementById('results');
+
+            let assignmentHtml = '';
+            if (data.dpll_result === 'SAT' && data.dpll_assignment) {
+                const dpllAssignments = Object.entries(data.dpll_assignment)
+                    .map(([var_, val]) => `${var_}=${val}`)
+                    .join(', ');
+
+                const cdclAssignments = Object.entries(data.cdcl_assignment)
+                    .map(([var_, val]) => `${var_}=${val}`)
+                    .join(', ');
+
+                if (dpllAssignments === cdclAssignments) {
+                    assignmentHtml = `<div class="assignment"><strong>Assignment:</strong> ${dpllAssignments}</div>`;
+                } else {
+                    assignmentHtml = `
+                        <div class="assignment">
+                            <strong>DPLL Assignment:</strong> ${dpllAssignments}
+                        </div>
+                        <div class="assignment">
+                            <strong>CDCL Assignment:</strong> ${cdclAssignments}
+                        </div>
+                        <div style="margin-top: 10px; padding: 10px; background-color: #e3f2fd; border-radius: 15px; font-size: 14px; color: #1565c0;">
+                            <strong>Note:</strong> Both assignments are valid solutions to this formula.
+                        </div>
+                    `;
+                }
+            }
+
+            results.innerHTML = `
+                <h3>Pre-processing</h3>
+                <div class="formula-section">
+                    <div class="formula-label">Original:</div>
+                    <div class="formula-display">${data.original_formula}</div>
+                </div>
+                <div class="formula-section">
+                    <div class="formula-label">CNF:</div>
+                    <div class="formula-display">${data.cnf_formula}</div>
+                </div>
+
+                <h3>Results</h3>
+                <div class="solver-result">
+                    <div>
+                        <strong>DPLL:</strong>
+                        <span class="${data.dpll_result.toLowerCase()}">${data.dpll_result}</span>
+                    </div>
+                    <div><strong>Time:</strong> ${data.dpll_time}</div>
+                </div>
+
+                <div class="solver-result">
+                    <div>
+                        <strong>CDCL:</strong>
+                        <span class="${data.cdcl_result.toLowerCase()}">${data.cdcl_result}</span>
+                    </div>
+                    <div><strong>Time:</strong> ${data.cdcl_time}</div>
+                </div>
+
+                ${assignmentHtml}
+            `;
+            results.style.display = 'block';
+        }
+
+        function solveDimacs() {
+            const fileInput = document.getElementById('dimacsFile');
+            const button = document.getElementById('dimacsBtn');
+            const results = document.getElementById('results');
+
+            if (!fileInput.files[0]) {
+                showError('Please select a DIMACS file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('dimacs_file', fileInput.files[0]);
+
+            button.disabled = true;
+            button.textContent = 'Solving...';
+
+            fetch('/solve_dimacs', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showError(data.error);
+                    } else {
+                        showResults(data);
+                    }
+                })
+                .catch(error => {
+                    showError('Network error: ' + error.message);
+                })
+                .finally(() => {
+                    button.disabled = false;
+                    button.textContent = 'Solve File';
+                });
+        }
+
+        document.getElementById('formula').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                solveFormula();
+            }
+        });
+
+        document.getElementById('dimacsFile').addEventListener('change', function (e) {
+            const fileSelected = document.getElementById('file-upload-selected');
+            if (e.target.files[0]) {
+                fileSelected.textContent = `Selected: ${e.target.files[0].name}`;
+                fileSelected.style.display = 'block';
+            } else {
+                fileSelected.style.display = 'none';
+            }
+        });
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.target.closest('.file-upload-area').classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.target.closest('.file-upload-area').classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const uploadArea = e.target.closest('.file-upload-area');
+            uploadArea.classList.remove('dragover');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const fileInput = document.getElementById('dimacsFile');
+                fileInput.files = files;
+
+                const fileSelected = document.getElementById('file-upload-selected');
+                fileSelected.textContent = `Selected: ${files[0].name}`;
+                fileSelected.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+
+</html>

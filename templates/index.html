@@ -161,6 +161,42 @@
             border-color: #00bcd4;
             color: #333;
         }
+
+        .file-upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 25px;
+            padding: 12px;
+            text-align: center;
+            background-color: #fafafa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+
+        .file-upload-area:hover {
+            border-color: #00bcd4;
+            background-color: #f0f9ff;
+        }
+
+        .file-upload-area.dragover {
+            border-color: #00bcd4;
+            background-color: #e0f2fe;
+        }
+
+        .file-upload-text {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .file-upload-selected {
+            color: #00bcd4;
+            font-weight: bold;
+            margin-top: 8px;
+        }
+
+        .hidden-file-input {
+            display: none;
+        }
     </style>
 </head>
 
@@ -172,6 +208,19 @@
         <div class="input-row">
             <input type="text" id="formula" placeholder="e.g., (p and q) -> (not r or s)">
             <button onclick="solveFormula()" id="solveBtn">Solve</button>
+        </div>
+    </div>
+
+    <div class="input-section">
+        <label for="dimacsFile">Or upload a DIMACS file:</label>
+        <div class="input-row">
+            <div class="file-upload-area" onclick="document.getElementById('dimacsFile').click()"
+                 ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+                <input type="file" id="dimacsFile" accept=".cnf,.dimacs" class="hidden-file-input">
+                <div class="file-upload-text">Click to select or drag and drop a DIMACS file</div>
+                <div id="file-upload-selected" class="file-upload-selected" style="display: none;"></div>
+            </div>
+            <button onclick="solveDimacs()" id="dimacsBtn">Solve File</button>
         </div>
     </div>
 
@@ -292,7 +341,7 @@
                         <strong>DPLL:</strong>
                         <span class="${data.dpll_result.toLowerCase()}">${data.dpll_result}</span>
                     </div>
-                    <div><strong>Time:</strong> ${data.dpll_time}ms</div>
+                    <div><strong>Time:</strong> ${data.dpll_time}</div>
                 </div>
 
                 <div class="solver-result">
@@ -300,7 +349,7 @@
                         <strong>CDCL:</strong>
                         <span class="${data.cdcl_result.toLowerCase()}">${data.cdcl_result}</span>
                     </div>
-                    <div><strong>Time:</strong> ${data.cdcl_time}ms</div>
+                    <div><strong>Time:</strong> ${data.cdcl_time}</div>
                 </div>
 
                 ${assignmentHtml}
@@ -308,11 +357,84 @@
             results.style.display = 'block';
         }
 
+        function solveDimacs() {
+            const fileInput = document.getElementById('dimacsFile');
+            const button = document.getElementById('dimacsBtn');
+            const results = document.getElementById('results');
+
+            if (!fileInput.files[0]) {
+                showError('Please select a DIMACS file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('dimacs_file', fileInput.files[0]);
+
+            button.disabled = true;
+            button.textContent = 'Solving...';
+
+            fetch('/solve_dimacs', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showError(data.error);
+                    } else {
+                        showResults(data);
+                    }
+                })
+                .catch(error => {
+                    showError('Network error: ' + error.message);
+                })
+                .finally(() => {
+                    button.disabled = false;
+                    button.textContent = 'Solve File';
+                });
+        }
+
         document.getElementById('formula').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 solveFormula();
             }
         });
+
+        document.getElementById('dimacsFile').addEventListener('change', function (e) {
+            const fileSelected = document.getElementById('file-upload-selected');
+            if (e.target.files[0]) {
+                fileSelected.textContent = `Selected: ${e.target.files[0].name}`;
+                fileSelected.style.display = 'block';
+            } else {
+                fileSelected.style.display = 'none';
+            }
+        });
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.target.closest('.file-upload-area').classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.target.closest('.file-upload-area').classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const uploadArea = e.target.closest('.file-upload-area');
+            uploadArea.classList.remove('dragover');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const fileInput = document.getElementById('dimacsFile');
+                fileInput.files = files;
+
+                const fileSelected = document.getElementById('file-upload-selected');
+                fileSelected.textContent = `Selected: ${files[0].name}`;
+                fileSelected.style.display = 'block';
+            }
+        }
     </script>
 </body>
 

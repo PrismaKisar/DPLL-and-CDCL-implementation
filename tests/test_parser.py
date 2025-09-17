@@ -15,6 +15,13 @@ class TestTokenize:
         assert tokenize("p ∨ q") == ["p", "∨", "q"]
         assert tokenize("p → q") == ["p", "→", "q"]
         assert tokenize("p ↔ q") == ["p", "↔", "q"]
+
+    def test_text_operators(self):
+        assert tokenize("not p") == ["not", "p"]
+        assert tokenize("p and q") == ["p", "and", "q"]
+        assert tokenize("p or q") == ["p", "or", "q"]
+        assert tokenize("p -> q") == ["p", "->", "q"]
+        assert tokenize("p <-> q") == ["p", "<->", "q"]
     
     def test_parentheses(self):
         assert tokenize("(p ∧ q)") == ["(", "p", "∧", "q", ")"]
@@ -30,9 +37,9 @@ class TestTokenize:
     def test_invalid_characters(self):
         with pytest.raises(ValueError, match="Invalid character"):
             tokenize("p & q")
-        
+
         with pytest.raises(ValueError, match="Invalid character"):
-            tokenize("p1")
+            tokenize("p%q")
 
 
 class TestParser:
@@ -265,25 +272,70 @@ class TestParser:
 
 
 class TestParse:
-    
+
     def test_parse_simple_variable(self):
         result = parse("p")
         assert isinstance(result, Variable)
         assert result.name == "p"
-    
+
     def test_parse_negation(self):
         result = parse("¬p")
         assert isinstance(result, Not)
         assert isinstance(result.operand, Variable)
         assert result.operand.name == "p"
-    
+
+    def test_parse_text_negation(self):
+        result = parse("not p")
+        assert isinstance(result, Not)
+        assert isinstance(result.operand, Variable)
+        assert result.operand.name == "p"
+
+    def test_parse_text_and(self):
+        result = parse("p and q")
+        assert isinstance(result, And)
+        assert isinstance(result.left, Variable)
+        assert result.left.name == "p"
+        assert isinstance(result.right, Variable)
+        assert result.right.name == "q"
+
+    def test_parse_text_or(self):
+        result = parse("p or q")
+        assert isinstance(result, Or)
+        assert isinstance(result.left, Variable)
+        assert result.left.name == "p"
+        assert isinstance(result.right, Variable)
+        assert result.right.name == "q"
+
+    def test_parse_text_implication(self):
+        result = parse("p -> q")
+        assert isinstance(result, Implies)
+        assert isinstance(result.left, Variable)
+        assert result.left.name == "p"
+        assert isinstance(result.right, Variable)
+        assert result.right.name == "q"
+
+    def test_parse_text_biconditional(self):
+        result = parse("p <-> q")
+        assert isinstance(result, Biconditional)
+        assert isinstance(result.left, Variable)
+        assert result.left.name == "p"
+        assert isinstance(result.right, Variable)
+        assert result.right.name == "q"
+
     def test_parse_complex_formula(self):
         result = parse("(p ∧ q) → (¬r ∨ s)")
         assert isinstance(result, Implies)
         assert isinstance(result.left, And)
         assert isinstance(result.right, Or)
         assert isinstance(result.right.left, Not)
-    
+
+    def test_parse_complex_text_formula(self):
+        result = parse("(p and q) -> (not r or s)")
+        assert isinstance(result, Implies)
+        assert isinstance(result.left, And)
+        assert isinstance(result.right, Or)
+        assert isinstance(result.right.left, Not)
+
     def test_parse_precedence(self):
         result = parse("p ∨ q ∧ r")
         assert isinstance(result, Or)

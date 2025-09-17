@@ -6,8 +6,36 @@ This project implements **DPLL (Davis-Putnam-Logemann-Loveland)** and **CDCL (Co
 ## Implementation Scope
 The project covers three main components: **pre-processing** (parsing propositional formulas and converting to CNF via Tseytin transformation), **DPLL algorithm** (unit propagation, pure literal elimination, chronological backtracking), and **CDCL enhancement** (conflict analysis with 1UIP, clause learning, non-chronological backtracking, restart strategies). This demonstrates the evolution from classical SAT solving to modern industrial-strength algorithms used in formal verification and automated reasoning.
 
-## Academic Integrity
-This project was completed in accordance with academic integrity policies. All implementations are original work based on standard algorithms from the literature, with appropriate citations for theoretical foundations and algorithmic descriptions.
+## Usage
+
+### Web Interface
+The project includes a modern web interface for interactive formula solving:
+
+```bash
+./start.sh
+```
+Then visit: http://127.0.0.1:5000
+
+**Features:**
+- Interactive formula input with extended syntax support
+- Real-time comparison between DPLL and CDCL algorithms
+- Visual CNF transformation display
+- Multiple assignment detection when solvers find different solutions
+- Built-in example formulas for quick testing
+
+**Supported syntax:**
+- Traditional: `¬`, `∧`, `∨`, `→`, `↔`
+- Extended: `not`, `and`, `or`, `->`, `<->`
+
+### Command Line Interface
+For benchmark comparisons:
+```bash
+python main.py
+```
+
+### Live Demo
+🌐 **Web Interface:** 
+
 
 ## License
 This project is for educational purposes as part of the Mathematical Logic course curriculum.

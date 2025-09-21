@@ -209,7 +209,18 @@ class DPLLSolver:
 
 
 class CDCLSolver:
+    """CDCL (Conflict-Driven Clause Learning) SAT solver.
+
+    Implements modern SAT solving algorithm with conflict analysis,
+    clause learning, and non-chronological backtracking.
+    """
+
     def __init__(self, cnf_formula: CNFFormula):
+        """Initialize CDCL solver with CNF formula.
+
+        Args:
+            cnf_formula: CNF formula to solve
+        """
         self.cnf = cnf_formula
         self.assignment: Dict[str, bool] = {}
         self.decision_stack: List[Assignment] = []
@@ -218,31 +229,34 @@ class CDCLSolver:
         self.implication_graph: Dict[str, ImplicationNode] = {}
         
     def _unit_propagation(self) -> Optional[Clause]:
-        changed = True
-        while changed:
-            changed = False
-            
+        """Apply unit propagation to current assignment.
+
+        For each unit clause (only one unassigned literal), forces that literal's value.
+        Continues until no more unit clauses or conflict found.
+
+        Returns:
+            Conflict clause if conflict detected, None otherwise
+        """
+
             for clause in self.cnf.clauses + self.learned_clauses:
-                clause_state = self._evaluate_clause(clause)
-                
-                if clause_state is False:
+
                     return clause
-                
-                if clause_state is None:
-                    unassigned_literals: List[Literal] = []
-                    for lit in clause.literals:
-                        if lit.variable not in self.assignment:
-                            unassigned_literals.append(lit)
-                    
-                    if len(unassigned_literals) == 1:
-                        lit = unassigned_literals[0]
-                        value = not lit.negated
-                        self._add_implication(lit.variable, value, clause)
-                        changed = True
-        
+
+
+                    value = not lit.negated
+                    self._add_implication(lit.variable, value, clause)
+
         return None
     
     def _evaluate_clause(self, clause: Clause) -> Optional[bool]:
+        """Evaluate a clause under the current assignment.
+
+        Args:
+            clause: Clause to evaluate
+
+        Returns:
+            True if clause satisfied, False if unsatisfied, None if undetermined
+        """
         satisfied = False
         unassigned_count = 0
         
@@ -263,6 +277,17 @@ class CDCLSolver:
             return None
     
     def _analyze_conflict(self, conflict_clause: Clause) -> Clause:
+        """Analyze conflict to derive learned clause (1UIP).
+
+        Uses resolution to derive a clause that captures the reason for the conflict.
+        Implements First Unique Implication Point (1UIP) strategy.
+
+        Args:
+            conflict_clause: The clause that caused the conflict
+
+        Returns:
+            Learned clause to prevent similar conflicts
+        """
         if self.decision_level == 0:
             return conflict_clause
             
@@ -329,6 +354,17 @@ class CDCLSolver:
             return self._analyze_conflict(resolved_clause)
     
     def _backjump(self, learned_clause: Clause) -> int:
+        """Determine backjump level for non-chronological backtracking.
+
+        Finds the second highest decision level in the learned clause
+        to enable non-chronological backtracking.
+
+        Args:
+            learned_clause: Clause learned from conflict analysis
+
+        Returns:
+            Decision level to backjump to
+        """
         if len(learned_clause.literals) <= 1:
             return 0
             
@@ -347,6 +383,14 @@ class CDCLSolver:
         return second_max_level
     
     def _backtrack_to_level(self, target_level: int):
+        """Backtrack to specified decision level.
+
+        Removes all assignments and implications made at levels
+        higher than the target level.
+
+        Args:
+            target_level: Decision level to backtrack to
+        """
         while self.decision_level > target_level:
             assignments_to_remove: List[Assignment] = []
             
@@ -365,6 +409,11 @@ class CDCLSolver:
             self.decision_level -= 1
     
     def _choose_variable(self) -> Optional[str]:
+        """Choose next unassigned variable for branching.
+
+        Returns:
+            Variable name to branch on, None if all variables assigned
+        """
         all_variables: Set[str] = set()
         for clause in self.cnf.clauses + self.learned_clauses:
             for lit in clause.literals:
@@ -376,6 +425,15 @@ class CDCLSolver:
         return None
     
     def _make_decision(self, variable: str, value: bool):
+        """Make a decision assignment at new decision level.
+
+        Creates a new decision level and assigns the variable.
+        Updates decision stack and implication graph.
+
+        Args:
+            variable: Variable to assign
+            value: Value to assign to variable
+        """
         self.decision_level += 1
         assignment = Assignment(variable, value, self.decision_level, None)
         self.decision_stack.append(assignment)
@@ -385,6 +443,16 @@ class CDCLSolver:
         self.implication_graph[variable] = node
     
     def _add_implication(self, variable: str, value: bool, reason: Clause):
+        """Add an implication from unit propagation.
+
+        Records the assignment with its reason clause for conflict analysis.
+        Updates assignment, decision stack, and implication graph.
+
+        Args:
+            variable: Variable to assign
+            value: Value to assign to variable
+            reason: Clause that forced this assignment
+        """
         assignment = Assignment(variable, value, self.decision_level, reason)
         self.decision_stack.append(assignment)
         self.assignment[variable] = value
@@ -398,6 +466,11 @@ class CDCLSolver:
         self.implication_graph[variable] = node
     
     def _all_clauses_satisfied(self) -> bool:
+        """Check if all clauses are satisfied by current assignment.
+
+        Returns:
+            True if all clauses satisfied, False otherwise
+        """
         for clause in self.cnf.clauses + self.learned_clauses:
             satisfied = False
             for lit in clause.literals:
@@ -411,25 +484,41 @@ class CDCLSolver:
         return True
     
     def solve(self) -> DecisionResult:
+        """Solve the CNF formula using CDCL algorithm.
+
+        Implements Conflict-Driven Clause Learning with:
+        - Unit propagation
+        - Conflict analysis (1UIP)
+        - Clause learning
+        - Non-chronological backtracking
+
+        Returns:
+            DecisionResult.SAT if formula is satisfiable, DecisionResult.UNSAT otherwise
+        """
         while True:
+            # Propagate: unit propagation
             conflict_clause = self._unit_propagation()
-            
+
             if conflict_clause is not None:
+                # Conflict: analyze the conflict
                 learned_clause = self._analyze_conflict(conflict_clause)
+                # Learn: add learned clause
                 self.learned_clauses.append(learned_clause)
-                
+
                 if self.decision_level == 0:
                     return DecisionResult.UNSAT
-                
+
+                # Backjump: non-chronological backtracking
                 backjump_level = self._backjump(learned_clause)
                 self._backtrack_to_level(backjump_level)
                 continue
-            
+
             if self._all_clauses_satisfied():
                 return DecisionResult.SAT
-            
+
+            # Decide: choose variable and assign value
             variable = self._choose_variable()
             if variable is None:
                 return DecisionResult.SAT
-            
+
             self._make_decision(variable, True)

@@ -62,10 +62,7 @@ class DPLLSolver:
             return DecisionResult.SAT
         
         variable = self._choose_variable(assignment)
-        if variable is None:
-            self.assignment = assignment
-            return DecisionResult.SAT
-        
+
         assignment_true = assignment.copy()
         assignment_true[variable] = True
         if self._dpll(assignment_true) == DecisionResult.SAT:
@@ -193,7 +190,9 @@ class DPLLSolver:
         for var in all_variables:
             if var not in assignment:
                 return var
-        return None
+
+        # This should never happen due to DPLL invariants
+        raise RuntimeError("No unassigned variables found, but not all clauses satisfied")
 
 
 class CDCLSolver:

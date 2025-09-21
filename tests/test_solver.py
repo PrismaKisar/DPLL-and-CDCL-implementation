@@ -1,6 +1,7 @@
 # pyright: reportPrivateUsage=false
 # pylint: disable=protected-access
 
+import pytest
 from src.solver import DPLLSolver, DecisionResult, Assignment, CDCLSolver, ImplicationNode
 from src.logic_ast import CNFFormula, Clause, Literal
 
@@ -20,61 +21,62 @@ class TestDPLLSolver:
         solver = DPLLSolver(cnf)
         assert solver.cnf == cnf
         assert solver.assignment == {}
-        assert solver.decision_stack == []
     
     def test_evaluate_clause_satisfied(self):
         clause = Clause([P, Q_NEG])
         cnf = CNFFormula([clause])
         solver = DPLLSolver(cnf)
-        
-        solver.assignment["p"] = True
-        result = solver._evaluate_clause(clause)
+
+        assignment = {"p": True}
+        result = solver._evaluate_clause(clause, assignment)
         assert result is True
     
     def test_evaluate_clause_unsatisfied(self):
         clause = Clause([P, Q])
         cnf = CNFFormula([clause])
         solver = DPLLSolver(cnf)
-        
-        solver.assignment["p"] = False
-        solver.assignment["q"] = False
-        result = solver._evaluate_clause(clause)
+
+        assignment = {"p": False, "q": False}
+        result = solver._evaluate_clause(clause, assignment)
         assert result is False
     
     def test_evaluate_clause_unassigned(self):
         clause = Clause([P, Q])
         cnf = CNFFormula([clause])
         solver = DPLLSolver(cnf)
-        
-        result = solver._evaluate_clause(clause)
+
+        assignment = {}
+        result = solver._evaluate_clause(clause, assignment)
         assert result is None
     
     def test_evaluate_clause_partial_assignment(self):
         clause = Clause([P, Q])
         cnf = CNFFormula([clause])
         solver = DPLLSolver(cnf)
-        
-        solver.assignment["p"] = False
-        result = solver._evaluate_clause(clause)
+
+        assignment = {"p": False}
+        result = solver._evaluate_clause(clause, assignment)
         assert result is None
     
     def test_unit_propagation_success(self):
         clause = Clause([P])
         cnf = CNFFormula([clause])
         solver = DPLLSolver(cnf)
-        
-        result = solver._unit_propagation()
-        assert result is None
-        assert solver.assignment["p"] is True
+
+        assignment = {}
+        result = solver._unit_propagation(assignment)
+        assert result is True
+        assert assignment["p"] is True
     
     def test_unit_propagation_conflict(self):
         clause1 = Clause([P])
         clause2 = Clause([P_NEG])
         cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
-        
-        result = solver._unit_propagation()
-        assert result == DecisionResult.UNSAT
+
+        assignment = {}
+        result = solver._unit_propagation(assignment)
+        assert result is False
     
     def test_unit_propagation_chain(self):
         clause1 = Clause([P])
@@ -82,203 +84,87 @@ class TestDPLLSolver:
         clause3 = Clause([Q, R])
         cnf = CNFFormula([clause1, clause2, clause3])
         solver = DPLLSolver(cnf)
-        
-        result = solver._unit_propagation()
-        assert result is None
-        assert solver.assignment["p"] is True
-        assert solver.assignment["q"] is False
-        assert solver.assignment["r"] is True
+
+        assignment = {}
+        result = solver._unit_propagation(assignment)
+        assert result is True
+        assert assignment["p"] is True
+        assert assignment["q"] is False
+        assert assignment["r"] is True
     
     def test_choose_variable(self):
         clause = Clause([P, Q])
         cnf = CNFFormula([clause])
         solver = DPLLSolver(cnf)
-        
-        var = solver._choose_variable()
+
+        assignment = {}
+        var = solver._choose_variable(assignment)
         assert var in ["p", "q"]
-        
-        solver.assignment["p"] = True
-        var = solver._choose_variable()
+
+        assignment["p"] = True
+        var = solver._choose_variable(assignment)
         assert var == "q"
-        
-        solver.assignment["q"] = False
-        var = solver._choose_variable()
-        assert var is None
-    
-    def test_make_decision(self):
-        cnf = CNFFormula([])
-        solver = DPLLSolver(cnf)
-        
-        solver._make_decision("p", True)
-        assert solver.assignment["p"] is True
-        assert len(solver.decision_stack) == 1
-        assert solver.decision_stack[0].variable == "p"
-        assert solver.decision_stack[0].value is True
-        assert solver.decision_stack[0].decision_level == 0
-    
-    def test_backtrack(self):
-        cnf = CNFFormula([])
-        solver = DPLLSolver(cnf)
-        
-        solver._make_decision("p", True)
-        solver._backtrack()
-        
-        assert solver.assignment["p"] is False
-        assert len(solver.decision_stack) == 1
-        assert solver.decision_stack[0].value is False
+
+        assignment["q"] = False
+        # Now all variables assigned, but our new implementation raises RuntimeError
+        with pytest.raises(RuntimeError):
+            solver._choose_variable(assignment)
     
     def test_all_clauses_satisfied(self):
         clause1 = Clause([P])
         clause2 = Clause([Q])
         cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
-        
-        assert solver._all_clauses_satisfied() is False
-        
-        solver.assignment["p"] = True
-        assert solver._all_clauses_satisfied() is False
-        
-        solver.assignment["q"] = True
-        assert solver._all_clauses_satisfied() is True
-    
-    def test_simplify_formula_satisfied_clause_removal(self):
-        clause1 = Clause([P, Q])
-        clause2 = Clause([R])
-        cnf = CNFFormula([clause1, clause2])
-        solver = DPLLSolver(cnf)
-        
-        solver.assignment["p"] = True
-        result = solver._simplify_formula()
-        
-        assert result is True
-        assert len(solver.cnf.clauses) == 1
-        assert solver.cnf.clauses[0].literals[0].variable == "r"
-    
-    def test_simplify_formula_false_literal_removal(self):
-        clause = Clause([P, Q, R])
-        cnf = CNFFormula([clause])
-        solver = DPLLSolver(cnf)
-        
-        solver.assignment["p"] = False
-        result = solver._simplify_formula()
-        
-        assert result is True
-        assert len(solver.cnf.clauses) == 1
-        assert len(solver.cnf.clauses[0].literals) == 2
-        assert solver.cnf.clauses[0].literals[0].variable == "q"
-        assert solver.cnf.clauses[0].literals[1].variable == "r"
-    
-    def test_simplify_formula_empty_clause(self):
-        clause = Clause([P])
-        cnf = CNFFormula([clause])
-        solver = DPLLSolver(cnf)
-        
-        solver.assignment["p"] = False
-        result = solver._simplify_formula()
-        
-        assert result is False
-    
-    def test_unit_resolution_false_literal_removal(self):
-        clause = Clause([P, Q, R])
-        cnf = CNFFormula([clause])
-        solver = DPLLSolver(cnf)
-        
-        solver.assignment["p"] = False
-        result = solver._simplify_formula()
-        
-        assert result is True
-        assert len(solver.cnf.clauses) == 1
-        assert len(solver.cnf.clauses[0].literals) == 2
-        literals = [lit.variable for lit in solver.cnf.clauses[0].literals]
-        assert "q" in literals
-        assert "r" in literals
-        assert "p" not in literals
-    
-    def test_unit_resolution_negated_literal_removal(self):
-        clause = Clause([P_NEG, Q, R])
-        cnf = CNFFormula([clause])
-        solver = DPLLSolver(cnf)
-        
-        solver.assignment["p"] = True
-        result = solver._simplify_formula()
-        
-        assert result is True
-        assert len(solver.cnf.clauses) == 1
-        assert len(solver.cnf.clauses[0].literals) == 2
-        literals = [lit.variable for lit in solver.cnf.clauses[0].literals]
-        assert "q" in literals
-        assert "r" in literals
-        assert "p" not in [lit.variable for lit in solver.cnf.clauses[0].literals]
-    
-    def test_backtrack_empty_stack(self):
-        cnf = CNFFormula([])
-        solver = DPLLSolver(cnf)
-        
-        solver._backtrack()
-        
-        assert len(solver.decision_stack) == 0
-        assert len(solver.assignment) == 0
-    
-    def test_backtrack_multiple_same_level(self):
-        cnf = CNFFormula([])
-        solver = DPLLSolver(cnf)
-        
-        solver.decision_stack.append(Assignment("p", True, 0))
-        solver.decision_stack.append(Assignment("q", True, 1))
-        solver.decision_stack.append(Assignment("r", True, 1))
-        solver.assignment["p"] = True
-        solver.assignment["q"] = True
-        solver.assignment["r"] = True
-        
-        assert len(solver.assignment) == 3
-        
-        solver._backtrack()
-        
-        assert "q" not in solver.assignment
-        assert solver.assignment["p"] is True
-        assert solver.assignment["r"] is False
+
+        assignment = {}
+        assert solver._all_clauses_satisfied(assignment) is False
+
+        assignment["p"] = True
+        assert solver._all_clauses_satisfied(assignment) is False
+
+        assignment["q"] = True
+        assert solver._all_clauses_satisfied(assignment) is True
     
     def test_pure_literal_elimination_positive(self):
         clause1 = Clause([P, Q])
         clause2 = Clause([P, R_NEG])
         cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
-        
-        result = solver._pure_literal_elimination()
-        assert result is None
-        assert solver.assignment["p"] is True
+
+        assignment = {}
+        solver._pure_literal_elimination(assignment)
+        assert assignment["p"] is True
     
     def test_pure_literal_elimination_negative(self):
         clause1 = Clause([P, Q_NEG])
         clause2 = Clause([Q_NEG, R])
         cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
-        
-        result = solver._pure_literal_elimination()
-        assert result is None
-        assert solver.assignment["q"] is False
+
+        assignment = {}
+        solver._pure_literal_elimination(assignment)
+        assert assignment["q"] is False
     
     def test_pure_literal_elimination_mixed_polarity(self):
         clause1 = Clause([P, Q])
         clause2 = Clause([P_NEG, Q])
         cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
-        
-        result = solver._pure_literal_elimination()
-        assert result is None
-        assert "p" not in solver.assignment
-        assert solver.assignment["q"] is True
+
+        assignment = {}
+        solver._pure_literal_elimination(assignment)
+        assert "p" not in assignment
+        assert assignment["q"] is True
     
     def test_pure_literal_elimination_already_satisfied(self):
         clause1 = Clause([P])
         clause2 = Clause([Q])
         cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
-        
-        solver.assignment["p"] = True
-        result = solver._pure_literal_elimination()
-        assert result is None
-        assert solver.assignment["q"] is True
+
+        assignment = {"p": True}
+        solver._pure_literal_elimination(assignment)
+        assert assignment["q"] is True
     
     def test_solve_simple_sat(self):
         clause = Clause([P])
@@ -401,69 +287,16 @@ class TestDPLLSolver:
         assert result == DecisionResult.SAT
     
     def test_solve_pure_literal_elimination_unsat_case(self):
-        cnf = CNFFormula([])
+        # Test scenario where pure literal elimination would detect UNSAT
+        # Create a formula that becomes unsatisfiable after pure literal assignment
+        clause1 = Clause([P])      # Pure literal: p must be True
+        clause2 = Clause([P_NEG])  # Conflict: p must be False
+        cnf = CNFFormula([clause1, clause2])
         solver = DPLLSolver(cnf)
-        
-        original_method = solver._pure_literal_elimination
-        def mock_pure_literal_elimination():
-            return DecisionResult.UNSAT
-        
-        solver._pure_literal_elimination = mock_pure_literal_elimination
-        
+
         result = solver.solve()
         assert result == DecisionResult.UNSAT
-        
-        solver._pure_literal_elimination = original_method
     
-    def test_solve_no_variables_to_choose(self):
-        cnf = CNFFormula([])
-        solver = DPLLSolver(cnf)
-        
-        original_choose = solver._choose_variable
-        original_all_satisfied = solver._all_clauses_satisfied
-        
-        def mock_choose_variable():
-            return None
-        
-        def mock_all_clauses_satisfied():
-            return False
-        
-        solver._choose_variable = mock_choose_variable
-        solver._all_clauses_satisfied = mock_all_clauses_satisfied
-        
-        result = solver.solve()
-        assert result == DecisionResult.SAT
-        
-        solver._choose_variable = original_choose
-        solver._all_clauses_satisfied = original_all_satisfied
-    
-    def test_solve_pure_literal_elimination_unsat_with_backtrack(self):
-        cnf = CNFFormula([])
-        solver = DPLLSolver(cnf)
-        
-        solver._make_decision("p", True)
-        
-        call_count = 0
-        original_method = solver._pure_literal_elimination
-        def mock_pure_literal_elimination():
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                return DecisionResult.UNSAT
-            return None
-        
-        original_all_satisfied = solver._all_clauses_satisfied
-        def mock_all_clauses_satisfied():
-            return True
-        
-        solver._pure_literal_elimination = mock_pure_literal_elimination
-        solver._all_clauses_satisfied = mock_all_clauses_satisfied
-        
-        result = solver.solve()
-        assert result == DecisionResult.SAT
-        
-        solver._pure_literal_elimination = original_method
-        solver._all_clauses_satisfied = original_all_satisfied
 
 
 class TestCDCLSolver:

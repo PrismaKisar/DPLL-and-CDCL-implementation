@@ -167,13 +167,17 @@ class DPLLSolver:
         unassigned_count = 0
         
         for lit in clause.literals:
-            if lit.variable in assignment:
-                lit_value = assignment[lit.variable]
-                if (not lit.negated and lit_value) or (lit.negated and not lit_value):
-                    satisfied = True
-                    break
-            else:
+            if lit.variable not in assignment:
                 unassigned_count += 1
+                continue
+
+            # Check if this literal is satisfied
+            lit_value = assignment[lit.variable]
+            is_satisfied = (not lit.negated and lit_value) or (lit.negated and not lit_value)
+
+            if is_satisfied:
+                satisfied = True
+                break
         
         if satisfied:
             return True

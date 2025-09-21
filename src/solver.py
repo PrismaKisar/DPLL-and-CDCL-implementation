@@ -76,9 +76,6 @@ class DPLLSolver:
         return self._dpll(assignment_false)
     
     def _unit_propagation(self, assignment: Dict[str, bool]) -> bool:
-        changed = True
-        while changed:
-            changed = False
         """Apply unit propagation to assignment.
 
         For each unit clause (only one unassigned literal), forces that literal's value.
@@ -90,18 +87,28 @@ class DPLLSolver:
         Returns:
             False if conflict detected, True otherwise
         """
+        while True:
+            propagated = False
+
             for clause in self.cnf.clauses:
                 state = self._evaluate_clause(clause, assignment)
+
                 if state is False:
                     return False
-                
-                if state is None:
-                    unassigned = [lit for lit in clause.literals if lit.variable not in assignment]
-                    if len(unassigned) == 1:
-                        lit = unassigned[0]
-                        value = not lit.negated
-                        assignment[lit.variable] = value
-                        changed = True
+
+                if state is not None:
+                    continue
+
+                # Find unit clause (exactly one unassigned literal)
+                unassigned = [lit for lit in clause.literals if lit.variable not in assignment]
+                if len(unassigned) == 1:
+                    lit = unassigned[0]
+                    assignment[lit.variable] = not lit.negated
+                    propagated = True
+
+            if not propagated:
+                break
+
         return True
     
     def _pure_literal_elimination(self, assignment: Dict[str, bool]) -> None:

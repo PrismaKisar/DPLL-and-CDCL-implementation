@@ -33,10 +33,23 @@ class DPLLSolver:
         self.assignment: Dict[str, bool] = {}
     
     def solve(self) -> DecisionResult:
+        """Solve the CNF formula using DPLL algorithm.
+
+        Returns:
+            DecisionResult.SAT if formula is satisfiable, DecisionResult.UNSAT otherwise
+        """
         assignment: Dict[str, bool] = {}
         return self._dpll(assignment)
     
     def _dpll(self, assignment: Dict[str, bool]) -> DecisionResult:
+        """Core DPLL recursive algorithm.
+
+        Args:
+            assignment: Current partial variable assignment
+
+        Returns:
+            DecisionResult.SAT if satisfiable with this assignment, DecisionResult.UNSAT otherwise
+        """
         assignment = assignment.copy()
         
         if not self._unit_propagation(assignment):
@@ -66,6 +79,17 @@ class DPLLSolver:
         changed = True
         while changed:
             changed = False
+        """Apply unit propagation to assignment.
+
+        For each unit clause (only one unassigned literal), forces that literal's value.
+        Continues until no more unit clauses or conflict found.
+
+        Args:
+            assignment: Variable assignment to modify
+
+        Returns:
+            False if conflict detected, True otherwise
+        """
             for clause in self.cnf.clauses:
                 state = self._evaluate_clause(clause, assignment)
                 if state is False:
@@ -81,6 +105,14 @@ class DPLLSolver:
         return True
     
     def _pure_literal_elimination(self, assignment: Dict[str, bool]) -> None:
+        """Eliminate pure literals from unassigned variables.
+
+        A pure literal appears with only one polarity across all clauses.
+        Can safely assign it the value that satisfies all its occurrences.
+
+        Args:
+            assignment: Variable assignment to modify
+        """
         literal_polarities: Dict[str, Set[bool]] = {}
         for clause in self.cnf.clauses:
             if self._evaluate_clause(clause, assignment) is not True:
@@ -95,12 +127,29 @@ class DPLLSolver:
                 assignment[var] = list(polarities)[0]
     
     def _all_clauses_satisfied(self, assignment: Dict[str, bool]) -> bool:
+        """Check if all clauses are satisfied by the current assignment.
+
+        Args:
+            assignment: Variable assignment to check
+
+        Returns:
+            True if all clauses satisfied, False otherwise
+        """
         for clause in self.cnf.clauses:
             if self._evaluate_clause(clause, assignment) is not True:
                 return False
         return True
     
     def _evaluate_clause(self, clause: Clause, assignment: Dict[str, bool]) -> Optional[bool]:
+        """Evaluate a clause under the current assignment.
+
+        Args:
+            clause: Clause to evaluate
+            assignment: Current variable assignment
+
+        Returns:
+            True if clause satisfied, False if unsatisfied, None if undetermined
+        """
         satisfied = False
         unassigned_count = 0
         
@@ -120,7 +169,15 @@ class DPLLSolver:
         else:
             return None
     
-    def _choose_variable(self, assignment: Dict[str, bool]) -> Optional[str]:
+    def _choose_variable(self, assignment: Dict[str, bool]) -> str:
+        """Choose next unassigned variable for branching.
+
+        Args:
+            assignment: Current variable assignment
+
+        Returns:
+            Variable name to branch on
+        """
         all_variables: Set[str] = set()
         for clause in self.cnf.clauses:
             for lit in clause.literals:

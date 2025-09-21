@@ -118,14 +118,23 @@ class DPLLSolver:
             assignment: Variable assignment to modify
         """
         literal_polarities: Dict[str, Set[bool]] = {}
+
         for clause in self.cnf.clauses:
-            if self._evaluate_clause(clause, assignment) is not True:
-                for lit in clause.literals:
-                    if lit.variable not in assignment:
-                        if lit.variable not in literal_polarities:
-                            literal_polarities[lit.variable] = set()
-                        literal_polarities[lit.variable].add(not lit.negated)
-        
+            # Skip already satisfied clauses
+            if self._evaluate_clause(clause, assignment) is True:
+                continue
+
+            for lit in clause.literals:
+                # Skip already assigned variables
+                if lit.variable in assignment:
+                    continue
+
+                # Track polarity of this literal
+                if lit.variable not in literal_polarities:
+                    literal_polarities[lit.variable] = set()
+                literal_polarities[lit.variable].add(not lit.negated)
+
+        # Assign pure literals (appearing with only one polarity)
         for var, polarities in literal_polarities.items():
             if len(polarities) == 1:
                 assignment[var] = list(polarities)[0]

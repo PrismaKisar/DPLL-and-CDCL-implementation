@@ -326,3 +326,93 @@ def _distribute_right_over_and(left_and: And, right_operand: Formula) -> Formula
         distribute_or_over_and(Or(left_and.left, right_operand)),
         distribute_or_over_and(Or(left_and.right, right_operand))
     )
+class TseytinTransformer:
+    """
+    Tseytin transformation that creates biconditionals for subformulas.
+
+    This follows the standard approach:
+    1. Assign z_n variables to complex subformulas
+    2. Generate biconditionals z_n ↔ subformula
+    3. Let the existing CNF converter handle the biconditionals
+    """
+
+    def __init__(self):
+        self.z_counter = 0
+        self.biconditionals = []
+
+    def _fresh_z_variable(self) -> str:
+        """Generate fresh auxiliary variable z_n."""
+        self.z_counter += 1
+        return f"z_{self.z_counter}"
+
+    def extract_biconditionals(self, formula: Formula) -> tuple[str, list[Biconditional]]:
+        """
+        Extract biconditionals from formula using Tseytin transformation.
+
+        Args:
+            formula: Formula in NNF (no implications, negations pushed to literals)
+
+        Returns:
+            Tuple of (main_variable, list_of_biconditionals)
+        """
+        self.z_counter = 0
+        self.biconditionals = []
+
+        main_var = self._process_formula(formula)
+
+        return main_var, self.biconditionals
+
+    def _process_formula(self, formula: Formula) -> str:
+        """
+        Process formula recursively, assigning z variables to complex subformulas.
+
+        Returns:
+            Variable name representing this formula
+        """
+        if isinstance(formula, Variable):
+            return formula.name
+
+        elif isinstance(formula, Not):
+            if isinstance(formula.operand, Variable):
+                # ¬p stays as is - handled by literal representation
+                return formula.operand.name  # Will be negated at call site
+            else:
+                raise ValueError("Formula should be in NNF - negations only on variables")
+
+        elif isinstance(formula, (And, Or)):
+            # Complex subformula - assign z variable
+            z_var = self._fresh_z_variable()
+
+            # Process children first
+            if isinstance(formula, And):
+                left_var = self._process_formula(formula.left)
+                right_var = self._process_formula(formula.right)
+                # Create new formula with variable references
+                processed_formula = And(
+                    self._var_or_negated_var(formula.left, left_var),
+                    self._var_or_negated_var(formula.right, right_var)
+                )
+            else:  # Or
+                left_var = self._process_formula(formula.left)
+                right_var = self._process_formula(formula.right)
+                processed_formula = Or(
+                    self._var_or_negated_var(formula.left, left_var),
+                    self._var_or_negated_var(formula.right, right_var)
+                )
+
+            # Create biconditional z_var ↔ processed_formula
+            biconditional = Biconditional(Variable(z_var), processed_formula)
+            self.biconditionals.append(biconditional)
+            return z_var
+
+        else:
+            raise ValueError(f"Unexpected formula type in NNF: {type(formula).__name__}")
+
+    def _var_or_negated_var(self, original_formula: Formula, var_name: str) -> Formula:
+        """
+        Convert back to Variable or Not(Variable) based on original formula.
+        """
+        if isinstance(original_formula, Not):
+            return Not(Variable(var_name))
+        else:
+            return Variable(var_name)

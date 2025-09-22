@@ -296,81 +296,172 @@ class CDCLSolver:
         return False if unassigned_count == 0 else None
     
     def _analyze_conflict(self, conflict_clause: Clause) -> Clause:
-        """Analyze conflict to derive learned clause (1UIP).
+        """Analyze conflict to derive learned clause using First Unique Implication Point (1UIP).
 
-        Uses resolution to derive a clause that captures the reason for the conflict.
-        Implements First Unique Implication Point (1UIP) strategy.
+        Performs iterative resolution starting from the conflict clause until reaching
+        a clause with at most one variable from the current decision level (1UIP condition).
 
         Args:
             conflict_clause: The clause that caused the conflict
 
         Returns:
-            Learned clause to prevent similar conflicts
+            Learned clause that prevents similar conflicts
         """
+        # Base case: conflicts at decision level 0 are unresolvable
         if self.decision_level == 0:
             return conflict_clause
-            
-        current_clause = conflict_clause
-        current_level_vars = 0
-        
-        for lit in current_clause.literals:
-            if (lit.variable in self.implication_graph and 
-                self.implication_graph[lit.variable].decision_level == self.decision_level):
-                current_level_vars += 1
-        
-        if current_level_vars <= 1:
-            return current_clause
-            
-        most_recent_var = None
-        most_recent_idx = -1
-        
-        for lit in current_clause.literals:
-            if (lit.variable in self.implication_graph and 
-                self.implication_graph[lit.variable].decision_level == self.decision_level):
-                for i, assignment in enumerate(self.decision_stack):
-                    if (assignment.variable == lit.variable and 
-                        assignment.decision_level == self.decision_level):
-                        if i > most_recent_idx:
-                            most_recent_idx = i
-                            most_recent_var = lit.variable
-                        break
-        
-        if most_recent_var is None or most_recent_var not in self.implication_graph:
-            return current_clause
-            
-        node = self.implication_graph[most_recent_var]
-        if node.reason is None:
-            return current_clause
-            
+
+        resolvent_clause = conflict_clause
+
+        # Iteratively resolve until 1UIP condition is satisfied
+        while not self._is_first_unique_implication_point(resolvent_clause):
+            # Find the next variable to resolve on (most recently assigned at current level)
+            resolution_variable = self._find_most_recent_current_level_variable(resolvent_clause)
+
+            if not self._can_resolve_on_variable(resolution_variable):
+                # Cannot resolve further - return current clause as learned clause
+                return resolvent_clause
+
+            # Perform resolution step
+            reason_clause = self.implication_graph[resolution_variable].reason
+            resolvent_clause = self._resolve_clauses(
+                resolvent_clause,
+                reason_clause,
+                resolution_variable
+            )
+
+        return resolvent_clause
+
+    def _is_first_unique_implication_point(self, clause: Clause) -> bool:
+        """Check if clause satisfies 1UIP condition.
+
+        1UIP condition: at most one variable from current decision level.
+
+        Args:
+            clause: Clause to check
+
+        Returns:
+            True if clause satisfies 1UIP condition
+        """
+        return self._count_current_level_variables(clause) <= 1
+
+    def _count_current_level_variables(self, clause: Clause) -> int:
+        """Count variables in clause that belong to current decision level.
+
+        Args:
+            clause: Clause to analyze
+
+        Returns:
+            Number of variables from current decision level
+        """
+        return sum(
+            1 for literal in clause.literals
+            if self._is_variable_at_current_level(literal.variable)
+        )
+
+    def _find_most_recent_current_level_variable(self, clause: Clause) -> Optional[str]:
+        """Find the most recently assigned variable in clause at current decision level.
+
+        Args:
+            clause: Clause to search in
+
+        Returns:
+            Most recently assigned variable at current level, None if none found
+        """
+        current_level_variables = [
+            literal.variable for literal in clause.literals
+            if self._is_variable_at_current_level(literal.variable)
+        ]
+
+        if not current_level_variables:
+            return None
+
+        # Find variable with highest assignment index (most recent)
+        return max(
+            current_level_variables,
+            key=self._find_variable_assignment_index
+        )
+
+    def _is_variable_at_current_level(self, variable: str) -> bool:
+        """Check if variable belongs to current decision level.
+
+        Args:
+            variable: Variable to check
+
+        Returns:
+            True if variable is assigned at current decision level
+        """
+        return (variable in self.implication_graph and
+                self.implication_graph[variable].decision_level == self.decision_level)
+
+    def _find_variable_assignment_index(self, variable: str) -> int:
+        """Find index of variable assignment in decision stack at current level.
+
+        Args:
+            variable: Variable to find
+
+        Returns:
+            Index in decision stack, -1 if not found
+        """
+        for index, assignment in enumerate(self.decision_stack):
+            if (assignment.variable == variable and
+                assignment.decision_level == self.decision_level):
+                return index
+        return -1
+
+    def _can_resolve_on_variable(self, variable: Optional[str]) -> bool:
+        """Check if resolution can be performed on the given variable.
+
+        Args:
+            variable: Variable to check for resolution
+
+        Returns:
+            True if variable can be used for resolution
+        """
+        if variable is None:
+            return False
+
+        implication_node = self.implication_graph.get(variable)
+        return (implication_node is not None and
+                implication_node.reason is not None)
+
+    def _resolve_clauses(self, clause1: Clause, clause2: Clause, pivot_var: str) -> Clause:
+        """Resolve two clauses on pivot variable.
+
+        Args:
+            clause1: First clause in resolution
+            clause2: Second clause in resolution
+            pivot_var: Variable to resolve on
+
+        Returns:
+            Resolved clause without pivot variable
+        """
         resolved_literals: List[Literal] = []
-        
-        for lit in current_clause.literals:
-            if lit.variable != most_recent_var:
-                resolved_literals.append(lit)
-                
-        for lit in node.reason.literals:
-            if lit.variable != most_recent_var:
-                already_exists = False
-                for existing_lit in resolved_literals:
-                    if (existing_lit.variable == lit.variable and 
-                        existing_lit.negated == lit.negated):
-                        already_exists = True
-                        break
-                if not already_exists:
-                    resolved_literals.append(lit)
-        
-        resolved_clause = Clause(resolved_literals)
-        
-        new_current_level_vars = 0
-        for lit in resolved_clause.literals:
-            if (lit.variable in self.implication_graph and 
-                self.implication_graph[lit.variable].decision_level == self.decision_level):
-                new_current_level_vars += 1
-                
-        if new_current_level_vars <= 1:
-            return resolved_clause
-        else:
-            return self._analyze_conflict(resolved_clause)
+
+        # Collect all non-pivot literals from both clauses
+        for clause in [clause1, clause2]:
+            for literal in clause.literals:
+                if (literal.variable != pivot_var and
+                    not self._literal_exists(literal, resolved_literals)):
+                    resolved_literals.append(literal)
+
+        return Clause(resolved_literals)
+
+    def _literal_exists(self, literal: Literal, literal_list: List[Literal]) -> bool:
+        """Check if literal already exists in list.
+
+        Args:
+            literal: Literal to search for
+            literal_list: List of literals to search in
+
+        Returns:
+            True if literal exists in list, False otherwise
+        """
+        return any(
+            existing_literal.variable == literal.variable and
+            existing_literal.negated == literal.negated
+            for existing_literal in literal_list
+        )
     
     def _backjump(self, learned_clause: Clause) -> int:
         """Determine backjump level for non-chronological backtracking.

@@ -278,24 +278,22 @@ class CDCLSolver:
         Returns:
             True if clause satisfied, False if unsatisfied, None if undetermined
         """
-        satisfied = False
         unassigned_count = 0
-        
-        for lit in clause.literals:
-            if lit.variable in self.assignment:
-                lit_value = self.assignment[lit.variable]
-                if (not lit.negated and lit_value) or (lit.negated and not lit_value):
-                    satisfied = True
-                    break
-            else:
+
+        for literal in clause.literals:
+            if literal.variable not in self.assignment:
                 unassigned_count += 1
-        
-        if satisfied:
-            return True
-        elif unassigned_count == 0:
-            return False
-        else:
-            return None
+                continue
+
+            # Check if this literal is satisfied
+            variable_value = self.assignment[literal.variable]
+            literal_satisfied = (not literal.negated and variable_value) or (literal.negated and not variable_value)
+
+            if literal_satisfied:
+                return True
+
+        # No literal satisfied the clause
+        return False if unassigned_count == 0 else None
     
     def _analyze_conflict(self, conflict_clause: Clause) -> Clause:
         """Analyze conflict to derive learned clause (1UIP).

@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from flask import Flask, render_template, request, jsonify
 from src.parser import parse
-from src.preprocessing import to_cnf
+from src.preprocessing import to_cnf_tseytin
 from src.solver import DPLLSolver, CDCLSolver, DecisionResult
 from src.dimacs_parser import parse_dimacs_file
 import tempfile
@@ -27,7 +27,7 @@ def solve():
             return jsonify({'error': 'Please enter a formula'})
 
         formula = parse(formula_str)
-        cnf_formula = to_cnf(formula)
+        cnf_formula = to_cnf_tseytin(formula)
 
         dpll_solver = DPLLSolver(cnf_formula)
         start_time = time.time()

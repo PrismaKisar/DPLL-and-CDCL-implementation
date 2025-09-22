@@ -326,6 +326,48 @@ def _distribute_right_over_and(left_and: And, right_operand: Formula) -> Formula
         distribute_or_over_and(Or(left_and.left, right_operand)),
         distribute_or_over_and(Or(left_and.right, right_operand))
     )
+
+
+def to_cnf_tseytin(formula: Formula) -> CNFFormula:
+    """
+    Convert a formula to CNF using Tseytin transformation.
+
+    Process:
+    1. Assign auxiliary variables z_n to each subformula
+    2. Create biconditionals z_n ↔ subformula
+    3. Convert each biconditional to CNF using to_nnf + distribution
+    4. Combine all CNF clauses + assertion of main variable
+
+    Args:
+        formula: Input logical formula
+
+    Returns:
+        CNF formula with auxiliary variables z_n
+    """
+    try:
+        # First eliminate implications
+        nnf_formula = to_nnf(formula)
+
+        # Apply Tseytin transformation
+        transformer = TseytinTransformer()
+        main_var, biconditionals = transformer.extract_biconditionals(nnf_formula)
+
+        # Convert each biconditional to CNF and collect all clauses
+        all_clauses = []
+        for biconditional in biconditionals:
+            biconditional_cnf = to_cnf(biconditional)
+            all_clauses.extend(biconditional_cnf.clauses)
+
+        # Add assertion that main formula is true
+        main_clause = Clause([Literal(main_var, negated=False)])
+        all_clauses.append(main_clause)
+
+        return CNFFormula(all_clauses)
+
+    except Exception as e:
+        raise ValueError(f"Failed to convert to CNF using Tseytin: {e}") from e
+
+
 class TseytinTransformer:
     """
     Tseytin transformation that creates biconditionals for subformulas.

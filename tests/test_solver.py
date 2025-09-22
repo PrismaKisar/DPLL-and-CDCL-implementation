@@ -338,25 +338,27 @@ class TestCDCLSolver:
         reason_clause = Clause([P, Q_NEG])
         cnf = CNFFormula([reason_clause])
         solver = CDCLSolver(cnf)
-        
+
         solver.assignment["q"] = False
+        solver.implication_graph["q"] = ImplicationNode("q", False, 0)
         solver._add_implication("p", True, reason_clause)
-        
+
         assert solver.assignment["p"] is True
         assert len(solver.decision_stack) == 1
-        
+
         assignment = solver.decision_stack[0]
         assert assignment.variable == "p"
         assert assignment.value is True
         assert assignment.decision_level == 0
         assert assignment.reason == reason_clause
-        
+
         node = solver.implication_graph["p"]
         assert node.variable == "p"
         assert node.value is True
         assert node.decision_level == 0
         assert node.reason == reason_clause
-        assert "q" in node.antecedents
+        antecedent_vars = [n.variable for n in node.antecedents]
+        assert "q" in antecedent_vars
     
     def test_choose_variable_with_learned_clauses(self):
         original_clause = Clause([P])
@@ -465,8 +467,10 @@ class TestCDCLSolver:
         assert solver.implication_graph["p"].reason == clause1
         assert solver.implication_graph["q"].reason == clause2
         assert solver.implication_graph["r"].reason == clause3
-        assert "p" in solver.implication_graph["q"].antecedents
-        assert "q" in solver.implication_graph["r"].antecedents
+        q_antecedents = [n.variable for n in solver.implication_graph["q"].antecedents]
+        r_antecedents = [n.variable for n in solver.implication_graph["r"].antecedents]
+        assert "p" in q_antecedents
+        assert "q" in r_antecedents
     
     def test_unit_propagation_with_learned_clauses(self):
         original_clause = Clause([P])

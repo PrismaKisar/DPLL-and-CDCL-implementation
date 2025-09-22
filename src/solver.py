@@ -237,14 +237,35 @@ class CDCLSolver:
         Returns:
             Conflict clause if conflict detected, None otherwise
         """
+        while True:
+            propagated = False
 
             for clause in self.cnf.clauses + self.learned_clauses:
+                clause_state = self._evaluate_clause(clause)
 
+                # Check for conflict
+                if clause_state is False:
                     return clause
 
+                # Skip satisfied or undetermined non-unit clauses
+                if clause_state is True:
+                    continue
 
-                    value = not lit.negated
-                    self._add_implication(lit.variable, value, clause)
+                # Find unassigned literals in undetermined clause
+                unassigned_literals = [
+                    literal for literal in clause.literals
+                    if literal.variable not in self.assignment
+                ]
+
+                # Process unit clause (exactly one unassigned literal)
+                if len(unassigned_literals) == 1:
+                    unit_literal = unassigned_literals[0]
+                    implied_value = not unit_literal.negated
+                    self._add_implication(unit_literal.variable, implied_value, clause)
+                    propagated = True
+
+            if not propagated:
+                break
 
         return None
     

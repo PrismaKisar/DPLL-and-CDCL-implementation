@@ -1,7 +1,8 @@
 import pytest
 
-from src.preprocessing import eliminate_implications, push_negations_inward, to_nnf, to_cnf, distribute_or_over_and, formula_to_cnf_format, extract_literals_from_or, formula_to_literal
+from src.preprocessing import eliminate_implications, push_negations_inward, to_nnf, to_cnf, to_cnf_tseytin, distribute_or_over_and, formula_to_cnf_format, extract_literals_from_or, formula_to_literal
 from src.logic_ast import Variable, Not, And, Or, Implies, Biconditional, CNFFormula
+from src.solver import DPLLSolver, DecisionResult
 
 
 P = Variable("p")
@@ -251,8 +252,182 @@ class TestExtractLiteralsFromOr:
 
 
 class TestFormulaToLiteral:
-    
+
     def test_invalid_formula_type_error(self):
         and_formula = And(P, Q)
         with pytest.raises(ValueError, match="Cannot convert"):
             formula_to_literal(and_formula)
+
+
+class TestTseytinTransformation:
+    """Comprehensive tests for Tseytin transformation with z_n variables."""
+
+    def test_single_variable(self):
+        """Test: Single variable should work correctly."""
+        formula = P
+        cnf = to_cnf_tseytin(formula)
+        assert len(cnf.clauses) == 1
+        # Should just be the variable itself
+        assert any("p" in str(clause) for clause in cnf.clauses)
+
+    def test_simple_conjunction(self):
+        """Test: p ∧ q should create z_1 ↔ (p ∧ q) + assertion z_1."""
+        formula = And(P, Q)
+        cnf = to_cnf_tseytin(formula)
+
+        # Should have clauses for the biconditional + assertion
+        assert len(cnf.clauses) >= 3
+
+        # Check that z_1 variables are used
+        cnf_str = str(cnf)
+        assert "z_1" in cnf_str
+
+        # Verify satisfiability
+        solver = DPLLSolver(cnf)
+        result = solver.solve()
+        assert result == DecisionResult.SAT
+
+    def test_simple_disjunction(self):
+        """Test: p ∨ q should create z_1 ↔ (p ∨ q) + assertion z_1."""
+        formula = Or(P, Q)
+        cnf = to_cnf_tseytin(formula)
+
+        assert len(cnf.clauses) >= 3
+        assert "z_1" in str(cnf)
+
+        solver = DPLLSolver(cnf)
+        result = solver.solve()
+        assert result == DecisionResult.SAT
+
+    def test_nested_formula(self):
+        """Test: (p ∧ q) ∨ r should create multiple z variables."""
+        formula = Or(And(P, Q), R)
+        cnf = to_cnf_tseytin(formula)
+
+        # Should have multiple z variables
+        cnf_str = str(cnf)
+        assert "z_1" in cnf_str
+        assert "z_2" in cnf_str
+
+        # Verify satisfiability
+        solver = DPLLSolver(cnf)
+        result = solver.solve()
+        assert result == DecisionResult.SAT
+
+    def test_complex_formula(self):
+        """Test: (p ∧ q) ∨ (r ∧ s) should handle multiple subformulas."""
+        S = Variable("s")
+        formula = Or(And(P, Q), And(R, S))
+        cnf = to_cnf_tseytin(formula)
+
+        # Should create z variables for each subformula
+        cnf_str = str(cnf)
+        assert "z_1" in cnf_str
+        assert "z_2" in cnf_str
+        assert "z_3" in cnf_str
+
+        # Test satisfiability
+        solver = DPLLSolver(cnf)
+        result = solver.solve()
+        assert result == DecisionResult.SAT
+
+    def test_implication_handling(self):
+        """Test: p → q should be converted correctly through NNF first."""
+        formula = Implies(P, Q)
+        cnf = to_cnf_tseytin(formula)
+
+        # Should work without errors
+        assert len(cnf.clauses) > 0
+
+        # Verify satisfiability
+        solver = DPLLSolver(cnf)
+        result = solver.solve()
+        assert result == DecisionResult.SAT
+
+    def test_biconditional_handling(self):
+        """Test: p ↔ q should be converted correctly."""
+        formula = Biconditional(P, Q)
+        cnf = to_cnf_tseytin(formula)
+
+        assert len(cnf.clauses) > 0
+
+        solver = DPLLSolver(cnf)
+        result = solver.solve()
+        assert result == DecisionResult.SAT
+
+    def test_negation_handling(self):
+        """Test: ¬(p ∧ q) should be handled via NNF conversion."""
+        formula = Not(And(P, Q))
+        cnf = to_cnf_tseytin(formula)
+
+        assert len(cnf.clauses) > 0
+
+        solver = DPLLSolver(cnf)
+        result = solver.solve()
+        assert result == DecisionResult.SAT
+
+    def test_satisfiability_equivalence_sat(self):
+        """Test: Tseytin and classical should agree on SAT formulas."""
+        formula = Or(P, Q)
+
+        classical_cnf = to_cnf(formula)
+        tseytin_cnf = to_cnf_tseytin(formula)
+
+        classical_solver = DPLLSolver(classical_cnf)
+        tseytin_solver = DPLLSolver(tseytin_cnf)
+
+        classical_result = classical_solver.solve()
+        tseytin_result = tseytin_solver.solve()
+
+        assert classical_result == tseytin_result == DecisionResult.SAT
+
+    def test_satisfiability_equivalence_unsat(self):
+        """Test: Tseytin and classical should agree on UNSAT formulas."""
+        # Create unsatisfiable formula: p ∧ ¬p
+        formula = And(P, Not(P))
+
+        classical_cnf = to_cnf(formula)
+        tseytin_cnf = to_cnf_tseytin(formula)
+
+        classical_solver = DPLLSolver(classical_cnf)
+        tseytin_solver = DPLLSolver(tseytin_cnf)
+
+        classical_result = classical_solver.solve()
+        tseytin_result = tseytin_solver.solve()
+
+        assert classical_result == tseytin_result == DecisionResult.UNSAT
+
+    def test_complex_nested_formula(self):
+        """Test: Deeply nested formula should work correctly."""
+        T = Variable("t")
+        U = Variable("u")
+
+        # ((p ∧ q) ∨ r) ∧ ((s ∨ t) ∧ u)
+        formula = And(
+            Or(And(P, Q), R),
+            And(Or(Variable("s"), T), U)
+        )
+
+        cnf = to_cnf_tseytin(formula)
+
+        # Should have multiple z variables
+        cnf_str = str(cnf)
+        assert "z_" in cnf_str
+
+        # Should be satisfiable
+        solver = DPLLSolver(cnf)
+        result = solver.solve()
+        assert result == DecisionResult.SAT
+
+    def test_z_variable_naming(self):
+        """Test: Variables should be named z_1, z_2, z_3, etc."""
+        formula = Or(And(P, Q), And(R, Variable("s")))
+        cnf = to_cnf_tseytin(formula)
+
+        cnf_str = str(cnf)
+        # Should use z_n naming convention
+        assert "z_1" in cnf_str
+        assert "z_2" in cnf_str
+        assert "z_3" in cnf_str
+        # Should not use aux_ or other naming
+        assert "aux_" not in cnf_str

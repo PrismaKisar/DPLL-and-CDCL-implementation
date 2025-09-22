@@ -477,20 +477,20 @@ class CDCLSolver:
         """
         if len(learned_clause.literals) <= 1:
             return 0
-            
-        max_level = 0
-        second_max_level = 0
-        
-        for lit in learned_clause.literals:
-            if lit.variable in self.implication_graph:
-                level = self.implication_graph[lit.variable].decision_level
-                if level > max_level:
-                    second_max_level = max_level
-                    max_level = level
-                elif level > second_max_level and level < max_level:
-                    second_max_level = level
-        
-        return second_max_level
+
+        # Collect decision levels from literals in the learned clause
+        decision_levels = [
+            self.implication_graph[literal.variable].decision_level
+            for literal in learned_clause.literals
+            if literal.variable in self.implication_graph
+        ]
+
+        if len(decision_levels) <= 1:
+            return 0
+
+        # Return second highest decision level from the variables in the learned clause
+        unique_sorted_levels = sorted(set(decision_levels), reverse=True)
+        return unique_sorted_levels[1] if len(unique_sorted_levels) > 1 else 0
     
     def _backtrack_to_level(self, target_level: int):
         """Backtrack to specified decision level.
@@ -502,21 +502,22 @@ class CDCLSolver:
             target_level: Decision level to backtrack to
         """
         while self.decision_level > target_level:
-            assignments_to_remove: List[Assignment] = []
-            
-            for assignment in reversed(self.decision_stack):
-                if assignment.decision_level == self.decision_level:
-                    assignments_to_remove.append(assignment)
-                else:
-                    break
-            
-            for assignment in assignments_to_remove:
-                self.decision_stack.remove(assignment)
-                del self.assignment[assignment.variable]
-                if assignment.variable in self.implication_graph:
-                    del self.implication_graph[assignment.variable]
-            
+            self._remove_current_level_assignments()
             self.decision_level -= 1
+
+    def _remove_current_level_assignments(self):
+        """Remove all assignments from the current decision level.
+
+        Efficiently removes assignments from the end of decision stack
+        and updates assignment dictionary and implication graph.
+        """
+        # Remove assignments from current level (they're at the end of the stack)
+        while (self.decision_stack and
+               self.decision_stack[-1].decision_level == self.decision_level):
+            assignment = self.decision_stack.pop()
+            del self.assignment[assignment.variable]
+            if assignment.variable in self.implication_graph:
+                del self.implication_graph[assignment.variable]
     
     def _choose_variable(self) -> Optional[str]:
         """Choose next unassigned variable for branching.
@@ -524,14 +525,11 @@ class CDCLSolver:
         Returns:
             Variable name to branch on, None if all variables assigned
         """
-        all_variables: Set[str] = set()
+        # Find first unassigned variable from any clause
         for clause in self.cnf.clauses + self.learned_clauses:
-            for lit in clause.literals:
-                all_variables.add(lit.variable)
-        
-        for var in all_variables:
-            if var not in self.assignment:
-                return var
+            for literal in clause.literals:
+                if literal.variable not in self.assignment:
+                    return literal.variable
         return None
     
     def _make_decision(self, variable: str, value: bool):
@@ -548,7 +546,7 @@ class CDCLSolver:
         assignment = Assignment(variable, value, self.decision_level, None)
         self.decision_stack.append(assignment)
         self.assignment[variable] = value
-        
+
         node = ImplicationNode(variable, value, self.decision_level, None, [])
         self.implication_graph[variable] = node
     
@@ -563,16 +561,21 @@ class CDCLSolver:
             value: Value to assign to variable
             reason: Clause that forced this assignment
         """
+        # Record assignment
         assignment = Assignment(variable, value, self.decision_level, reason)
         self.decision_stack.append(assignment)
         self.assignment[variable] = value
-        
-        antecedents: List[str] = []
-        for lit in reason.literals:
-            if lit.variable != variable and lit.variable in self.assignment:
-                antecedents.append(lit.variable)
-        
-        node = ImplicationNode(variable, value, self.decision_level, reason, antecedents)
+
+        # Build antecedent nodes for implication graph
+        antecedent_nodes = [
+            self.implication_graph[literal.variable]
+            for literal in reason.literals
+            if (literal.variable != variable and
+                literal.variable in self.implication_graph)
+        ]
+
+        # Create implication node
+        node = ImplicationNode(variable, value, self.decision_level, reason, antecedent_nodes)
         self.implication_graph[variable] = node
     
     def _all_clauses_satisfied(self) -> bool:
@@ -581,17 +584,10 @@ class CDCLSolver:
         Returns:
             True if all clauses satisfied, False otherwise
         """
-        for clause in self.cnf.clauses + self.learned_clauses:
-            satisfied = False
-            for lit in clause.literals:
-                if lit.variable in self.assignment:
-                    lit_value = self.assignment[lit.variable]
-                    if (not lit.negated and lit_value) or (lit.negated and not lit_value):
-                        satisfied = True
-                        break
-            if not satisfied:
-                return False
-        return True
+        return all(
+            self._evaluate_clause(clause) is True
+            for clause in self.cnf.clauses + self.learned_clauses
+        )
     
     def solve(self) -> DecisionResult:
         """Solve the CNF formula using CDCL algorithm.
@@ -610,25 +606,53 @@ class CDCLSolver:
             conflict_clause = self._unit_propagation()
 
             if conflict_clause is not None:
-                # Conflict: analyze the conflict
-                learned_clause = self._analyze_conflict(conflict_clause)
-                # Learn: add learned clause
-                self.learned_clauses.append(learned_clause)
-
-                if self.decision_level == 0:
-                    return DecisionResult.UNSAT
-
-                # Backjump: non-chronological backtracking
-                backjump_level = self._backjump(learned_clause)
-                self._backtrack_to_level(backjump_level)
+                result = self._handle_conflict(conflict_clause)
+                if result is not None:
+                    return result
                 continue
 
+            # Check for satisfiability
             if self._all_clauses_satisfied():
                 return DecisionResult.SAT
 
             # Decide: choose variable and assign value
-            variable = self._choose_variable()
-            if variable is None:
+            if not self._make_next_decision():
                 return DecisionResult.SAT
 
-            self._make_decision(variable, True)
+    def _handle_conflict(self, conflict_clause: Clause) -> Optional[DecisionResult]:
+        """Handle conflict by learning clause and backtracking.
+
+        Args:
+            conflict_clause: The clause that caused the conflict
+
+        Returns:
+            DecisionResult.UNSAT if conflict at level 0, None to continue
+        """
+        # Analyze: derive learned clause from conflict
+        learned_clause = self._analyze_conflict(conflict_clause)
+
+        # Learn: add learned clause to prevent similar conflicts
+        self.learned_clauses.append(learned_clause)
+
+        # Check for unsatisfiability (conflict at decision level 0)
+        if self.decision_level == 0:
+            return DecisionResult.UNSAT
+
+        # Backjump: perform non-chronological backtracking
+        backjump_level = self._backjump(learned_clause)
+        self._backtrack_to_level(backjump_level)
+
+        return None
+
+    def _make_next_decision(self) -> bool:
+        """Make the next decision assignment.
+
+        Returns:
+            True if decision was made, False if no variables left to assign
+        """
+        variable = self._choose_variable()
+        if variable is None:
+            return False
+
+        self._make_decision(variable, True)
+        return True

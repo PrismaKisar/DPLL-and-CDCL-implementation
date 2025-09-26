@@ -458,3 +458,135 @@ class TseytinTransformer:
             return Not(Variable(var_name))
         else:
             return Variable(var_name)
+
+
+def is_3cnf(cnf_formula: CNFFormula) -> bool:
+    """
+    Check if a CNF formula is already in 3-CNF format.
+
+    A formula is in 3-CNF if all clauses have at most 3 literals.
+    This uses the practical definition where unit clauses (1 literal) and
+    binary clauses (2 literals) are considered valid 3-CNF.
+
+    Args:
+        cnf_formula: The CNF formula to check
+
+    Returns:
+        True if the formula is in 3-CNF, False otherwise
+    """
+    return all(len(clause.literals) <= 3 for clause in cnf_formula.clauses)
+
+
+def to_3cnf(cnf_formula: CNFFormula) -> CNFFormula:
+    """
+    Convert a CNF formula to 3-CNF using Tseytin-style variable introduction.
+
+    For clauses longer than 3 literals, introduces auxiliary variables to split them.
+    For example: (a ∨ b ∨ c ∨ d ∨ e) becomes:
+    - (a ∨ b ∨ z1)
+    - (¬z1 ∨ c ∨ z2)
+    - (¬z2 ∨ d ∨ e)
+
+    Args:
+        cnf_formula: The input CNF formula
+
+    Returns:
+        An equivalent 3-CNF formula
+    """
+    if is_3cnf(cnf_formula):
+        return cnf_formula
+
+    new_clauses = []
+    z_counter = _get_max_z_variable(cnf_formula) + 1
+
+    for clause in cnf_formula.clauses:
+        if len(clause.literals) <= 3:
+            new_clauses.append(clause)
+        else:
+            # Split long clause using auxiliary variables
+            new_clauses.extend(_split_long_clause(clause, z_counter))
+            z_counter += len(clause.literals) - 3
+
+    return CNFFormula(new_clauses)
+
+
+def _get_max_z_variable(cnf_formula: CNFFormula) -> int:
+    """
+    Find the highest numbered z variable in the formula to avoid conflicts.
+
+    Returns:
+        The highest z variable number found, or 0 if none exist
+    """
+    max_z = 0
+    for clause in cnf_formula.clauses:
+        for literal in clause.literals:
+            if literal.variable.startswith('z_'):
+                try:
+                    z_num = int(literal.variable[2:])
+                    max_z = max(max_z, z_num)
+                except ValueError:
+                    continue
+    return max_z
+
+
+def _split_long_clause(clause: Clause, start_z_counter: int) -> list[Clause]:
+    """
+    Split a clause with more than 3 literals into multiple 3-literal clauses.
+
+    Args:
+        clause: The clause to split (must have > 3 literals)
+        start_z_counter: Starting number for auxiliary variables
+
+    Returns:
+        List of clauses, each with at most 3 literals
+    """
+    literals = clause.literals
+    if len(literals) <= 3:
+        return [clause]
+
+    result_clauses = []
+    current_z = start_z_counter
+
+    # First clause: (lit1 ∨ lit2 ∨ z1)
+    first_clause = Clause([
+        literals[0],
+        literals[1],
+        Literal(f"z_{current_z}", negated=False)
+    ])
+    result_clauses.append(first_clause)
+
+    # Middle clauses: (¬z_i ∨ lit_next ∨ z_{i+1})
+    for i in range(2, len(literals) - 2):
+        middle_clause = Clause([
+            Literal(f"z_{current_z}", negated=True),
+            literals[i],
+            Literal(f"z_{current_z + 1}", negated=False)
+        ])
+        result_clauses.append(middle_clause)
+        current_z += 1
+
+    # Last clause: (¬z_last ∨ lit_{n-1} ∨ lit_n)
+    last_clause = Clause([
+        Literal(f"z_{current_z}", negated=True),
+        literals[-2],
+        literals[-1]
+    ])
+    result_clauses.append(last_clause)
+
+    return result_clauses
+
+
+def ensure_3cnf(cnf_formula: CNFFormula) -> CNFFormula:
+    """
+    Ensure a CNF formula is in 3-CNF format, converting if necessary.
+
+    This is the main function to use when you want to guarantee 3-CNF output.
+    It first checks if conversion is needed, then applies it only if required.
+
+    Args:
+        cnf_formula: The input CNF formula
+
+    Returns:
+        The formula in 3-CNF format
+    """
+    return to_3cnf(cnf_formula)

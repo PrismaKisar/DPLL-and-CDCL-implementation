@@ -209,18 +209,32 @@
             <input type="text" id="formula" placeholder="e.g., (p and q) -> (not r or s)">
             <button onclick="solveFormula()" id="solveBtn">Solve</button>
         </div>
+        <div style="margin-top: 10px;">
+            <label
+                style="display: flex; align-items: center; gap: 8px; font-weight: normal; color: #666; font-size: 14px;">
+                <input type="checkbox" id="applyTseytin" style="margin: 0;">
+                Apply Tseytin transformation (to 3-CNF)
+            </label>
+        </div>
     </div>
 
     <div class="input-section">
         <label for="dimacsFile">Or upload a DIMACS file:</label>
         <div class="input-row">
             <div class="file-upload-area" onclick="document.getElementById('dimacsFile').click()"
-                 ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+                ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
                 <input type="file" id="dimacsFile" accept=".cnf,.dimacs" class="hidden-file-input">
                 <div class="file-upload-text">Click to select or drag and drop a DIMACS file</div>
                 <div id="file-upload-selected" class="file-upload-selected" style="display: none;"></div>
             </div>
             <button onclick="solveDimacs()" id="dimacsBtn">Solve File</button>
+        </div>
+        <div style="margin-top: 10px;">
+            <label
+                style="display: flex; align-items: center; gap: 8px; font-weight: normal; color: #666; font-size: 14px;">
+                <input type="checkbox" id="apply3cnf" style="margin: 0;">
+                Apply Tseytin transformation (to 3-CNF)
+            </label>
         </div>
     </div>
 
@@ -234,13 +248,17 @@
             <div class="example" onclick="setFormula('p <-> q')">p <-> q</div>
             <div class="example" onclick="setFormula('(p or q) and (not p or r)')">(p or q) and (not p or r)</div>
             <div class="example" onclick="setFormula('p <-> (q and r)')">p <-> (q and r)</div>
-            <div class="example" onclick="setFormula('(p -> q) and (q -> r) and p and not r')">(p -> q) and (q -> r) and p and not r</div>
+            <div class="example" onclick="setFormula('(p -> q) and (q -> r) and p and not r')">(p -> q) and (q -> r) and
+                p and not r</div>
             <div class="example" onclick="setFormula('(p and q) or (r and s)')">(p and q) or (r and s)</div>
             <div class="example" onclick="setFormula('not (p or q)')">not (p or q)</div>
             <div class="example" onclick="setFormula('p and not p')">p and not p</div>
-            <div class="example" onclick="setFormula('(p -> q) <-> (not q -> not p)')">(p -> q) <-> (not q -> not p)</div>
-            <div class="example" onclick="setFormula('(a or b) and (c or d) and (e or f)')">(a or b) and (c or d) and (e or f)</div>
-            <div class="example" onclick="setFormula('(x and y) or (z and w) or (u and v)')">(x and y) or (z and w) or (u and v)</div>
+            <div class="example" onclick="setFormula('(p -> q) <-> (not q -> not p)')">(p -> q) <-> (not q -> not p)
+            </div>
+            <div class="example" onclick="setFormula('(a or b) and (c or d) and (e or f)')">(a or b) and (c or d) and (e
+                or f)</div>
+            <div class="example" onclick="setFormula('(x and y) or (z and w) or (u and v)')">(x and y) or (z and w) or
+                (u and v)</div>
         </div>
     </div>
 
@@ -253,6 +271,7 @@
 
         function solveFormula() {
             const formula = document.getElementById('formula').value.trim();
+            const applyTseytinCheckbox = document.getElementById('applyTseytin');
             const button = document.getElementById('solveBtn');
             const results = document.getElementById('results');
 
@@ -269,7 +288,10 @@
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ formula: formula })
+                body: JSON.stringify({
+                    formula: formula,
+                    apply_tseytin: applyTseytinCheckbox.checked
+                })
             })
                 .then(response => response.json())
                 .then(data => {
@@ -324,16 +346,76 @@
                 }
             }
 
+            // Build preprocessing section based on input type
+            let preprocessingHtml = '';
+            if (data.is_dimacs) {
+                // For DIMACS files: show with optional 3-CNF conversion
+                const fileInfo = `<div style="margin-bottom: 10px; padding: 8px; background-color: #e8f5e8; border-radius: 10px; font-size: 14px; color: #2e7d32;">
+                    <strong>File:</strong> ${data.filename} (${data.original_clauses_count} clauses)
+                </div>`;
+
+                if (data.apply_3cnf && data.was_converted_to_3cnf) {
+                    preprocessingHtml = `
+                        <h3>Pre-processing</h3>
+                        ${fileInfo}
+                        <div class="formula-section">
+                            <div class="formula-label">Original CNF:</div>
+                            <div class="formula-display">${data.original_formula}</div>
+                        </div>
+                        <div class="formula-section">
+                            <div class="formula-label">3-CNF (converted):</div>
+                            <div class="formula-display">${data.cnf_formula}</div>
+                        </div>
+                        <div style="margin: 10px 0; padding: 10px; background-color: #fff3e0; border-radius: 15px; font-size: 14px; color: #ef6c00;">
+                            <strong>3-CNF conversion applied:</strong> ${data.final_clauses_count - data.original_clauses_count} auxiliary clauses added.
+                        </div>
+                    `;
+                } else if (data.apply_3cnf && !data.was_converted_to_3cnf) {
+                    preprocessingHtml = `
+                        <h3>Pre-processing</h3>
+                        ${fileInfo}
+                        <div class="formula-section">
+                            <div class="formula-label">CNF Formula (already in 3-CNF):</div>
+                            <div class="formula-display">${data.original_formula}</div>
+                        </div>
+                        <div style="margin: 10px 0; padding: 10px; background-color: #e8f5e8; border-radius: 15px; font-size: 14px; color: #2e7d32;">
+                            <strong>No conversion needed:</strong> Formula is already in 3-CNF format.
+                        </div>
+                    `;
+                } else {
+                    preprocessingHtml = `
+                        <h3>Pre-processing</h3>
+                        ${fileInfo}
+                        <div class="formula-section">
+                            <div class="formula-label">CNF Formula:</div>
+                            <div class="formula-display">${data.original_formula}</div>
+                        </div>
+                        <div style="margin: 10px 0; padding: 10px; background-color: #e3f2fd; border-radius: 15px; font-size: 14px; color: #1565c0;">
+                            <strong>DIMACS file:</strong> Formula loaded directly without 3-CNF conversion.
+                        </div>
+                    `;
+                }
+            } else {
+                // For text formulas: show original → CNF with method indicator
+                const methodLabel = data.apply_tseytin ?
+                    `CNF (${data.conversion_method} transformation)` :
+                    `CNF (${data.conversion_method})`;
+
+                preprocessingHtml = `
+                    <h3>Pre-processing</h3>
+                    <div class="formula-section">
+                        <div class="formula-label">Original:</div>
+                        <div class="formula-display">${data.original_formula}</div>
+                    </div>
+                    <div class="formula-section">
+                        <div class="formula-label">${methodLabel}:</div>
+                        <div class="formula-display">${data.cnf_formula}</div>
+                    </div>
+                `;
+            }
+
             results.innerHTML = `
-                <h3>Pre-processing</h3>
-                <div class="formula-section">
-                    <div class="formula-label">Original:</div>
-                    <div class="formula-display">${data.original_formula}</div>
-                </div>
-                <div class="formula-section">
-                    <div class="formula-label">CNF:</div>
-                    <div class="formula-display">${data.cnf_formula}</div>
-                </div>
+                ${preprocessingHtml}
 
                 <h3>Results</h3>
                 <div class="solver-result">
@@ -359,6 +441,7 @@
 
         function solveDimacs() {
             const fileInput = document.getElementById('dimacsFile');
+            const apply3cnfCheckbox = document.getElementById('apply3cnf');
             const button = document.getElementById('dimacsBtn');
             const results = document.getElementById('results');
 
@@ -369,6 +452,7 @@
 
             const formData = new FormData();
             formData.append('dimacs_file', fileInput.files[0]);
+            formData.append('apply_3cnf', apply3cnfCheckbox.checked);
 
             button.disabled = true;
             button.textContent = 'Solving...';

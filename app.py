@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from flask import Flask, render_template, request, jsonify
 from src.parser import parse
-from src.preprocessing import to_cnf_tseytin
+from src.preprocessing import to_cnf_tseytin, ensure_3cnf
 from src.solver import DPLLSolver, CDCLSolver, DecisionResult
 from src.dimacs_parser import parse_dimacs_file
 import tempfile
@@ -87,6 +87,9 @@ def solve_dimacs():
 
         try:
             cnf_formula = parse_dimacs_file(temp_file_path)
+
+            # Ensure the formula is in 3-CNF for optimal solver performance
+            cnf_formula = ensure_3cnf(cnf_formula)
 
             variables = {literal.variable for clause in cnf_formula.clauses
                         for literal in clause.literals}

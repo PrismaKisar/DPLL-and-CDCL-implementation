@@ -324,16 +324,60 @@
                 }
             }
 
+            // Build preprocessing section based on input type
+            let preprocessingHtml = '';
+            if (data.is_dimacs) {
+                // For DIMACS files: show original CNF → 3-CNF conversion if applicable
+                const fileInfo = `<div style="margin-bottom: 10px; padding: 8px; background-color: #e8f5e8; border-radius: 10px; font-size: 14px; color: #2e7d32;">
+                    <strong>File:</strong> ${data.filename} (${data.original_clauses_count} clauses)
+                </div>`;
+
+                if (data.was_converted_to_3cnf) {
+                    preprocessingHtml = `
+                        <h3>Pre-processing</h3>
+                        ${fileInfo}
+                        <div class="formula-section">
+                            <div class="formula-label">Original CNF:</div>
+                            <div class="formula-display">${data.original_formula}</div>
+                        </div>
+                        <div class="formula-section">
+                            <div class="formula-label">3-CNF (optimized):</div>
+                            <div class="formula-display">${data.cnf_formula}</div>
+                        </div>
+                        <div style="margin: 10px 0; padding: 10px; background-color: #fff3e0; border-radius: 15px; font-size: 14px; color: #ef6c00;">
+                            <strong>Conversion applied:</strong> ${data.final_clauses_count - data.original_clauses_count} auxiliary clauses added for 3-CNF optimization.
+                        </div>
+                    `;
+                } else {
+                    preprocessingHtml = `
+                        <h3>Pre-processing</h3>
+                        ${fileInfo}
+                        <div class="formula-section">
+                            <div class="formula-label">CNF Formula (already in 3-CNF):</div>
+                            <div class="formula-display">${data.original_formula}</div>
+                        </div>
+                        <div style="margin: 10px 0; padding: 10px; background-color: #e8f5e8; border-radius: 15px; font-size: 14px; color: #2e7d32;">
+                            <strong>No conversion needed:</strong> Formula is already in optimal 3-CNF format.
+                        </div>
+                    `;
+                }
+            } else {
+                // For text formulas: show original → CNF with Tseytin
+                preprocessingHtml = `
+                    <h3>Pre-processing</h3>
+                    <div class="formula-section">
+                        <div class="formula-label">Original:</div>
+                        <div class="formula-display">${data.original_formula}</div>
+                    </div>
+                    <div class="formula-section">
+                        <div class="formula-label">3-CNF (Tseytin transformation):</div>
+                        <div class="formula-display">${data.cnf_formula}</div>
+                    </div>
+                `;
+            }
+
             results.innerHTML = `
-                <h3>Pre-processing</h3>
-                <div class="formula-section">
-                    <div class="formula-label">Original:</div>
-                    <div class="formula-display">${data.original_formula}</div>
-                </div>
-                <div class="formula-section">
-                    <div class="formula-label">CNF:</div>
-                    <div class="formula-display">${data.cnf_formula}</div>
-                </div>
+                ${preprocessingHtml}
 
                 <h3>Results</h3>
                 <div class="solver-result">

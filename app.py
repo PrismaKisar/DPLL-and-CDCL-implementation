@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from flask import Flask, render_template, request, jsonify
 from src.parser import parse
-from src.preprocessing import to_cnf_tseytin, ensure_3cnf
+from src.preprocessing import to_cnf_tseytin, ensure_3cnf, is_3cnf
 from src.solver import DPLLSolver, CDCLSolver, DecisionResult
 from src.dimacs_parser import parse_dimacs_file
 import tempfile
@@ -64,7 +64,8 @@ def solve():
             'cdcl_result': cdcl_result.value,
             'cdcl_time': format_time(cdcl_time),
             'dpll_assignment': dpll_assignment,
-            'cdcl_assignment': cdcl_assignment
+            'cdcl_assignment': cdcl_assignment,
+            'is_dimacs': False
         })
 
     except Exception as e:
@@ -86,10 +87,11 @@ def solve_dimacs():
             temp_file_path = temp_file.name
 
         try:
-            cnf_formula = parse_dimacs_file(temp_file_path)
+            original_cnf_formula = parse_dimacs_file(temp_file_path)
 
-            # Ensure the formula is in 3-CNF for optimal solver performance
-            cnf_formula = ensure_3cnf(cnf_formula)
+            # Check if conversion to 3-CNF is needed
+            is_already_3cnf = is_3cnf(original_cnf_formula)
+            cnf_formula = ensure_3cnf(original_cnf_formula) if not is_already_3cnf else original_cnf_formula
 
             variables = {literal.variable for clause in cnf_formula.clauses
                         for literal in clause.literals}
@@ -118,16 +120,23 @@ def solve_dimacs():
                 else:
                     return f"{time_seconds * 1000:.2f}ms"
 
-            return jsonify({
-                'original_formula': f"DIMACS file: {file.filename}",
+            response = {
+                'original_formula': str(original_cnf_formula),
                 'cnf_formula': str(cnf_formula),
                 'dpll_result': dpll_result.value,
                 'dpll_time': format_time(dpll_time),
                 'cdcl_result': cdcl_result.value,
                 'cdcl_time': format_time(cdcl_time),
                 'dpll_assignment': dpll_assignment,
-                'cdcl_assignment': cdcl_assignment
-            })
+                'cdcl_assignment': cdcl_assignment,
+                'is_dimacs': True,
+                'filename': file.filename,
+                'was_converted_to_3cnf': not is_already_3cnf,
+                'original_clauses_count': len(original_cnf_formula.clauses),
+                'final_clauses_count': len(cnf_formula.clauses)
+            }
+
+            return jsonify(response)
 
         finally:
             os.unlink(temp_file_path)

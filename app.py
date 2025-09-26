@@ -148,7 +148,49 @@ def ping_self():
 
 if __name__ == '__main__':
     import os
-    port = int(os.environ.get('PORT', 5000))
+    import socket
+
+    def find_free_port(preferred_ports=[5000, 8080, 8000, 3000]):
+        """Find a free port, trying preferred ports first, then scanning a range."""
+        # Try preferred ports first
+        for port in preferred_ports:
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    s.bind(('0.0.0.0', port))
+                    return port
+            except OSError:
+                continue
+
+        # If preferred ports are taken, scan a wider range
+        for port in range(8080, 8200):
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    s.bind(('0.0.0.0', port))
+                    return port
+            except OSError:
+                continue
+        return None
+
+    # Determine port with better error handling
+    if os.environ.get('PORT'):
+        try:
+            port = int(os.environ.get('PORT'))
+            print(f"Using environment PORT: {port}")
+        except ValueError:
+            print("Invalid PORT environment variable, finding free port...")
+            port = find_free_port()
+    else:
+        port = find_free_port()
+
+    if port is None:
+        print("No free port found in range 5000, 8000-8199")
+        print("Please close other applications using these ports or set a specific PORT environment variable")
+        sys.exit(1)
+
+    print(f"Starting Flask server on port {port}")
+    print(f"Open your browser to: http://127.0.0.1:{port}")
 
     if os.environ.get('RENDER_EXTERNAL_URL'):
         ping_thread = threading.Thread(target=ping_self, daemon=True)

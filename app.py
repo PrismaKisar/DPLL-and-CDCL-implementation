@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from flask import Flask, render_template, request, jsonify
 from src.parser import parse
-from src.preprocessing import to_cnf_tseytin, ensure_3cnf, is_3cnf
+from src.preprocessing import to_cnf_tseytin, to_cnf, ensure_3cnf, is_3cnf
 from src.solver import DPLLSolver, CDCLSolver, DecisionResult
 from src.dimacs_parser import parse_dimacs_file
 import tempfile
@@ -27,7 +27,16 @@ def solve():
             return jsonify({'error': 'Please enter a formula'})
 
         formula = parse(formula_str)
-        cnf_formula = to_cnf_tseytin(formula)
+
+        # Check if user wants Tseytin transformation
+        apply_tseytin = request.json.get('apply_tseytin', False)  # Default False (checkbox unchecked)
+
+        if apply_tseytin:
+            cnf_formula = to_cnf_tseytin(formula)
+            conversion_method = "Tseytin"
+        else:
+            cnf_formula = to_cnf(formula)
+            conversion_method = "Classic CNF"
 
         dpll_solver = DPLLSolver(cnf_formula)
         start_time = time.time()
@@ -65,7 +74,9 @@ def solve():
             'cdcl_time': format_time(cdcl_time),
             'dpll_assignment': dpll_assignment,
             'cdcl_assignment': cdcl_assignment,
-            'is_dimacs': False
+            'is_dimacs': False,
+            'conversion_method': conversion_method,
+            'apply_tseytin': apply_tseytin
         })
 
     except Exception as e:
@@ -89,9 +100,16 @@ def solve_dimacs():
         try:
             original_cnf_formula = parse_dimacs_file(temp_file_path)
 
-            # Check if conversion to 3-CNF is needed
-            is_already_3cnf = is_3cnf(original_cnf_formula)
-            cnf_formula = ensure_3cnf(original_cnf_formula) if not is_already_3cnf else original_cnf_formula
+            # Check if user wants 3-CNF conversion
+            apply_3cnf = request.form.get('apply_3cnf', 'false').lower() == 'true'
+
+            if apply_3cnf:
+                is_already_3cnf = is_3cnf(original_cnf_formula)
+                cnf_formula = ensure_3cnf(original_cnf_formula) if not is_already_3cnf else original_cnf_formula
+                was_converted = not is_already_3cnf
+            else:
+                cnf_formula = original_cnf_formula
+                was_converted = False
 
             variables = {literal.variable for clause in cnf_formula.clauses
                         for literal in clause.literals}
@@ -120,7 +138,7 @@ def solve_dimacs():
                 else:
                     return f"{time_seconds * 1000:.2f}ms"
 
-            response = {
+            return jsonify({
                 'original_formula': str(original_cnf_formula),
                 'cnf_formula': str(cnf_formula),
                 'dpll_result': dpll_result.value,
@@ -131,12 +149,11 @@ def solve_dimacs():
                 'cdcl_assignment': cdcl_assignment,
                 'is_dimacs': True,
                 'filename': file.filename,
-                'was_converted_to_3cnf': not is_already_3cnf,
+                'apply_3cnf': apply_3cnf,
+                'was_converted_to_3cnf': was_converted,
                 'original_clauses_count': len(original_cnf_formula.clauses),
                 'final_clauses_count': len(cnf_formula.clauses)
-            }
-
-            return jsonify(response)
+            })
 
         finally:
             os.unlink(temp_file_path)

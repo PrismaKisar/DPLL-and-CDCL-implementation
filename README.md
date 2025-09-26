@@ -1,5 +1,10 @@
 # SAT Solver Implementation: DPLL & CDCL
 
+## 🚀 Try it Online Now!
+**Live Demo:** https://dpll-and-cdcl-implementation.onrender.com/
+
+Experience interactive SAT solving with real-time performance comparisons between DPLL and CDCL algorithms. No installation required!
+
 ## Project Overview
 This project implements **DPLL (Davis-Putnam-Logemann-Loveland)** and **CDCL (Conflict-Driven Clause Learning)** algorithms from scratch for solving the Boolean Satisfiability Problem (SAT). The implementation includes complete pre-processing pipelines to transform logical formulas into the required normal forms (NNF, CNF) while preserving equisatisfiability.
 
@@ -14,7 +19,7 @@ The project includes a modern web interface for interactive formula solving:
 ```bash
 ./start.sh
 ```
-Then visit: http://127.0.0.1:5000
+The server will automatically find an available port and display the URL to visit (typically http://127.0.0.1:5000 or similar).
 
 **Features:**
 - Interactive formula input with extended syntax support
@@ -32,9 +37,6 @@ For benchmark comparisons:
 ```bash
 python main.py
 ```
-
-### Live Demo
-🌐 **Web Interface:** https://dpll-and-cdcl-implementation.onrender.com/
 
 
 ## License

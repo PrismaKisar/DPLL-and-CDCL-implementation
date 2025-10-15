@@ -99,7 +99,7 @@ class Parser:
     
     def parse_primary(self) -> Formula:
         token = self.peek()
-        
+
         if token == "(":
             self.consume()
             formula = self.parse_biconditional()
@@ -107,11 +107,11 @@ class Parser:
                 raise ValueError("Expected closing parenthesis")
             self.consume()
             return formula
-        
-        elif token and token.isalpha():
+
+        elif token and token[0].isalpha():
             self.consume()
             return Variable(token)
-        
+
         else:
             raise ValueError(f"Unexpected token: {token}")
 

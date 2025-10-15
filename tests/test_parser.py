@@ -385,3 +385,39 @@ class TestParse:
         assert isinstance(result.right.right, Not)
         assert isinstance(result.right.right.operand, Variable)
         assert result.right.right.operand.name == "s"
+
+    def test_parse_variable_with_numbers(self):
+        result = parse("x1")
+        assert isinstance(result, Variable)
+        assert result.name == "x1"
+
+    def test_parse_multiple_variables_with_numbers(self):
+        result = parse("p1 and q2")
+        assert isinstance(result, And)
+        assert isinstance(result.left, Variable)
+        assert result.left.name == "p1"
+        assert isinstance(result.right, Variable)
+        assert result.right.name == "q2"
+
+    def test_parse_complex_formula_with_numbered_variables(self):
+        result = parse("(x1 ∧ x2) → (y1 ∨ y2)")
+        assert isinstance(result, Implies)
+        assert isinstance(result.left, And)
+        assert isinstance(result.left.left, Variable)
+        assert result.left.left.name == "x1"
+        assert isinstance(result.left.right, Variable)
+        assert result.left.right.name == "x2"
+        assert isinstance(result.right, Or)
+        assert isinstance(result.right.left, Variable)
+        assert result.right.left.name == "y1"
+        assert isinstance(result.right.right, Variable)
+        assert result.right.right.name == "y2"
+
+    def test_parse_negation_with_numbered_variable(self):
+        result = parse("¬p1 ∨ q2")
+        assert isinstance(result, Or)
+        assert isinstance(result.left, Not)
+        assert isinstance(result.left.operand, Variable)
+        assert result.left.operand.name == "p1"
+        assert isinstance(result.right, Variable)
+        assert result.right.name == "q2"

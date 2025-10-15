@@ -209,13 +209,13 @@
             <input type="text" id="formula" placeholder="e.g., (p and q) -> (not r or s)">
             <button onclick="solveFormula()" id="solveBtn">Solve</button>
         </div>
-        <div style="margin-top: 10px;">
+        <!-- <div style="margin-top: 10px;">
             <label
                 style="display: flex; align-items: center; gap: 8px; font-weight: normal; color: #666; font-size: 14px;">
                 <input type="checkbox" id="applyTseytin" style="margin: 0;">
                 Apply Tseytin transformation (to 3-CNF)
             </label>
-        </div>
+        </div> -->
     </div>
 
     <div class="input-section">
@@ -229,13 +229,13 @@
             </div>
             <button onclick="solveDimacs()" id="dimacsBtn">Solve File</button>
         </div>
-        <div style="margin-top: 10px;">
+        <!-- <div style="margin-top: 10px;">
             <label
                 style="display: flex; align-items: center; gap: 8px; font-weight: normal; color: #666; font-size: 14px;">
                 <input type="checkbox" id="apply3cnf" style="margin: 0;">
                 Apply Tseytin transformation (to 3-CNF)
             </label>
-        </div>
+        </div> -->
     </div>
 
     <div class="examples">
@@ -290,7 +290,7 @@
                 },
                 body: JSON.stringify({
                     formula: formula,
-                    apply_tseytin: applyTseytinCheckbox.checked
+                    apply_tseytin: applyTseytinCheckbox ? applyTseytinCheckbox.checked : false
                 })
             })
                 .then(response => response.json())
@@ -452,7 +452,7 @@
 
             const formData = new FormData();
             formData.append('dimacs_file', fileInput.files[0]);
-            formData.append('apply_3cnf', apply3cnfCheckbox.checked);
+            formData.append('apply_3cnf', apply3cnfCheckbox ? apply3cnfCheckbox.checked : false);
 
             button.disabled = true;
             button.textContent = 'Solving...';

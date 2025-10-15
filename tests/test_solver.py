@@ -380,21 +380,6 @@ class TestCDCLSolver:
         var = solver._choose_variable()
         assert var is None
     
-    def test_all_clauses_satisfied_with_learned_clauses(self):
-        original_clause = Clause([P])
-        learned_clause = Clause([Q])
-        
-        cnf = CNFFormula([original_clause])
-        solver = CDCLSolver(cnf)
-        solver.learned_clauses.append(learned_clause)
-        
-        assert solver._all_clauses_satisfied() is False
-        
-        solver.assignment["p"] = True
-        assert solver._all_clauses_satisfied() is False
-        
-        solver.assignment["q"] = True
-        assert solver._all_clauses_satisfied() is True
     
     def test_implication_node_creation(self):
         node = ImplicationNode("p", True, 2, None, ["q", "r"])

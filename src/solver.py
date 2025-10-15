@@ -625,16 +625,6 @@ class CDCLSolver:
         node = ImplicationNode(variable, value, self.decision_level, reason, antecedent_nodes)
         self.implication_graph[variable] = node
     
-    def _all_clauses_satisfied(self) -> bool:
-        """Check if all clauses are satisfied by current assignment.
-
-        Returns:
-            True if all clauses satisfied, False otherwise
-        """
-        return all(
-            self._evaluate_clause(clause) is True
-            for clause in self.cnf.clauses + self.learned_clauses
-        )
     
     def solve(self) -> DecisionResult:
         """Solve the CNF formula using CDCL algorithm.
@@ -657,10 +647,6 @@ class CDCLSolver:
                 if result is not None:
                     return result
                 continue
-
-            # Check for satisfiability
-            if self._all_clauses_satisfied():
-                return DecisionResult.SAT
 
             # Decide: choose variable and assign value
             if not self._make_next_decision():
